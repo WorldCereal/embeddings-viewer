@@ -1,0 +1,2043 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WorldCereal — Classify Embeddings</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/geotiff@2.1.3/dist-browser/geotiff.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/proj4@2.9.0/dist/proj4.js"></script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #10111a; color: #d4d8e8;
+  height: 100vh; display: flex; flex-direction: column; overflow: hidden;
+}
+
+/* ── Header ─────────────────────────────────────────────── */
+#hdr {
+  background: #181a2a; border-bottom: 1px solid #252840;
+  padding: 7px 16px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; z-index: 1100;
+}
+.wc-logo-link { display:flex; align-items:center; flex-shrink:0; }
+.wc-logo { height:26px; width:auto; }
+#hdr h1 { font-size: 14px; font-weight: 700; color: #7eb8f7; white-space:nowrap; }
+#hdr .sub { font-size: 11px; color: #7a86a0; }
+.hdr-nav { display:flex; gap:4px; flex-shrink:0; }
+.nav-pill {
+  font-size:11px; font-weight:600; padding:3px 11px; border-radius:4px;
+  border:1px solid #252840; color:#8892aa; background:#1e2136;
+  text-decoration:none; cursor:pointer; white-space:nowrap; transition:all .15s;
+}
+.nav-pill:hover { border-color:#3a7bd5; color:#7eb8f7; }
+.nav-pill.active { background:#1b2f50; border-color:#3a7bd5; color:#7eb8f7; cursor:default; }
+#hint-bar {
+  margin-left:auto; font-size:11px; color:#4a6; background:#132415;
+  padding:3px 9px; border-radius:4px; border:1px solid #254428; white-space:nowrap;
+}
+
+/* ── Layout ──────────────────────────────────────────────── */
+#main { display: flex; flex: 1; overflow: hidden; }
+
+/* Left sidebar */
+#sb {
+  width: 300px; min-width: 200px; max-width: 520px; background: #181a2a;
+  display: flex; flex-direction: column; overflow: hidden; z-index: 1050; flex-shrink: 0;
+}
+#sb-handle {
+  width:5px; flex-shrink:0; cursor:col-resize; z-index:1060;
+  background:#1a1c2e; border-right:1px solid #252840; transition:background .15s;
+}
+#sb-handle:hover, #sb-handle.dragging { background:#3a7bd5; }
+#sb-scroll { flex:1; overflow-y:auto; padding:10px 10px 20px; }
+#sb-scroll::-webkit-scrollbar { width:5px; }
+#sb-scroll::-webkit-scrollbar-thumb { background:#2d3155; border-radius:3px; }
+
+/* Map */
+#mapc { flex:1; position:relative; overflow:hidden; }
+#map  { width:100%; height:100%; }
+
+/* Right panel */
+#cp {
+  width: 270px; min-width: 200px; max-width: 500px; background: #181a2a;
+  display: flex; flex-direction: column; overflow: hidden; z-index: 1050; flex-shrink: 0;
+  border-left: 1px solid #1e2036;
+}
+#cp-handle {
+  width:5px; flex-shrink:0; cursor:col-resize; z-index:1060;
+  background:#1a1c2e; border-left:1px solid #252840; transition:background .15s;
+}
+#cp-handle:hover, #cp-handle.dragging { background:#3a7bd5; }
+#cp-scroll { flex:1; overflow-y:auto; padding:10px 10px 20px; }
+#cp-scroll::-webkit-scrollbar { width:5px; }
+#cp-scroll::-webkit-scrollbar-thumb { background:#2d3155; border-radius:3px; }
+
+/* ── Step labels ─────────────────────────────────────────── */
+.step-label {
+  font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.9px;
+  color:#3a7bd5; background:#111422; border:1px solid #1e2a46;
+  padding:4px 8px; border-radius:4px; margin-bottom:10px; margin-top:2px;
+}
+
+/* ── Sections ────────────────────────────────────────────── */
+.sec { margin-bottom:12px; }
+.sec-hd {
+  display:flex; align-items:center; justify-content:space-between;
+  font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.8px;
+  color:#8892aa; padding:4px 0 6px; border-bottom:1px solid #222438; margin-bottom:8px;
+}
+.sbadge { font-size:10px; font-weight:600; padding:1px 7px; border-radius:8px; text-transform:none; letter-spacing:0; }
+.bok  { background:#1b3320; color:#4a6; }
+.bwarn{ background:#332210; color:#c8922a; }
+
+/* ── Classes section ─────────────────────────────────────── */
+.new-class-row { display:flex; gap:5px; margin-bottom:8px; align-items:center; }
+.new-class-row input[type=text] {
+  flex:1; background:#13151f; border:1px solid #2d3155; color:#d4d8e8;
+  padding:4px 7px; border-radius:3px; font-size:11px;
+}
+.new-class-row input[type=text]:focus { outline:none; border-color:#3a7bd5; }
+input.cls-colorpick { width:26px; height:26px; border:none; border-radius:3px; cursor:pointer; padding:1px; background:none; flex-shrink:0; }
+.badd-cls {
+  background:#1b3a6b; border:1px solid #3a7bd5; color:#7eb8f7;
+  padding:4px 10px; border-radius:3px; cursor:pointer; font-size:11px; white-space:nowrap; flex-shrink:0;
+}
+.badd-cls:hover { background:#1e4480; }
+
+/* Class item row */
+.cls-item {
+  display:flex; align-items:center; gap:6px; padding:5px 8px; border-radius:5px;
+  border:1px solid transparent; margin-bottom:2px; cursor:pointer; transition:all .12s;
+}
+.cls-item:hover { background:#1e2136; border-color:#272b47; }
+.cls-item.active { background:#1b2f50; border-color:#3a7bd5; }
+.cls-swatch { width:13px; height:13px; border-radius:3px; flex-shrink:0; }
+.cls-name { flex:1; font-size:11px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cls-cnt { font-size:10px; color:#4a5570; flex-shrink:0; }
+.cls-expand { background:none; border:none; color:#4a5570; cursor:pointer; font-size:12px; line-height:1; padding:0 2px; flex-shrink:0; }
+.cls-expand:hover { color:#7eb8f7; }
+.cls-del { background:none; border:none; color:#c0392b; cursor:pointer; font-size:14px; line-height:1; padding:0 2px; flex-shrink:0; }
+.cls-del:hover { color:#e74c3c; }
+
+/* Expanded point list */
+.cls-pts-list {
+  margin: 0 0 5px 18px; border-left:2px solid #252840; padding-left:8px;
+}
+.pt-item {
+  display:flex; align-items:center; gap:5px; padding:3px 0;
+  font-size:10px; color:#6a7490; border-bottom:1px solid #1a1c2e;
+}
+.pt-item:last-child { border-bottom:none; }
+.pt-coord { flex:1; font-family:monospace; font-size:10px; color:#8892aa; }
+.pt-sampled { font-size:10px; color:#4a6; flex-shrink:0; }
+.pt-del { background:none; border:none; color:#c0392b; cursor:pointer; font-size:12px; line-height:1; padding:0 2px; flex-shrink:0; }
+.pt-del:hover { color:#e74c3c; }
+
+/* Add-points bar */
+.add-pts-bar {
+  display:flex; align-items:center; gap:7px; margin-top:6px;
+  padding:7px 9px; background:#13151f; border-radius:5px; border:1px solid #252840;
+}
+.add-pts-lbl { flex:1; font-size:11px; color:#7a86a0; }
+.add-pts-active { color:#d4d8e8; font-weight:600; }
+.btn-addpts {
+  background:#1b3a6b; border:1px solid #3a7bd5; color:#7eb8f7;
+  padding:4px 10px; border-radius:3px; cursor:pointer; font-size:11px; font-weight:600; white-space:nowrap;
+}
+.btn-addpts.on { background:#3a7bd5; color:#fff; border-color:#3a7bd5; }
+.btn-addpts:disabled { opacity:.4; cursor:not-allowed; }
+
+/* ── Embedding layer cards ───────────────────────────────── */
+.lcard {
+  background:#1e2136; border:1px solid #272b47; border-radius:6px;
+  padding:8px 10px; margin-bottom:7px; transition:border-color .15s;
+}
+.lcard.vis  { border-left:3px solid #3a7bd5; }
+.lcard.err  { border-left:3px solid #c0392b; }
+.lcard.load { border-left:3px solid #c8922a; }
+.lrow { display:flex; align-items:center; gap:7px; }
+.lchk { width:15px; height:15px; cursor:pointer; accent-color:#3a7bd5; flex-shrink:0; }
+.lname{ flex:1; font-size:11px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ldel { background:none; border:none; color:#445; font-size:15px; cursor:pointer; padding:0 2px; line-height:1; }
+.ldel:hover { color:#c0392b; }
+.loprow { display:flex; align-items:center; gap:6px; margin-top:6px; }
+.loprow label { font-size:10px; color:#7a86a0; flex-shrink:0; }
+.loprow input[type=range] { flex:1; height:3px; accent-color:#3a7bd5; cursor:pointer; }
+.loprow span { font-size:10px; color:#8892aa; width:28px; text-align:right; }
+.brow { display:flex; align-items:center; gap:5px; margin-top:7px; padding-top:7px; border-top:1px solid #222438; }
+.brow label { font-size:10px; color:#7a86a0; flex-shrink:0; }
+.binp { width:44px; background:#13151f; border:1px solid #2d3155; color:#d4d8e8; padding:3px 5px; border-radius:3px; font-size:11px; text-align:center; }
+.binp:focus { outline:none; border-color:#3a7bd5; }
+.bxs { flex:1; background:#1e2136; border:1px solid #2d3155; color:#7eb8f7; padding:3px 7px; border-radius:3px; cursor:pointer; font-size:10px; white-space:nowrap; }
+.bxs:hover { background:#252840; border-color:#3a7bd5; }
+.lstat { font-size:10px; margin-top:5px; padding:3px 6px; border-radius:3px; background:#13151f; }
+.sok{ color:#4a6; } .sload{ color:#c8922a; } .serr{ color:#c0392b; }
+.spin { display:inline-block; width:10px; height:10px; border:2px solid #2d3155;
+  border-top-color:#7eb8f7; border-radius:50%; animation:sp .8s linear infinite; vertical-align:middle; margin-right:3px; }
+@keyframes sp { to { transform:rotate(360deg); } }
+
+/* ── STAC ────────────────────────────────────────────────── */
+.stacbar { display:flex; gap:6px; margin-bottom:8px; }
+.stfil { flex:1; background:#1e2136; border:1px solid #272b47; color:#d4d8e8; padding:5px 8px; border-radius:4px; font-size:11px; }
+.stfil:focus { outline:none; border-color:#3a7bd5; }
+.bsm { background:#1e2136; border:1px solid #3a7bd5; color:#7eb8f7; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:11px; white-space:nowrap; flex-shrink:0; }
+.bsm:hover { background:#222a4a; }
+.bsm:disabled { opacity:.5; cursor:not-allowed; }
+.stlist { max-height:160px; overflow-y:auto; }
+.stlist::-webkit-scrollbar { width:4px; }
+.stlist::-webkit-scrollbar-thumb { background:#2d3155; }
+.sti { display:flex; align-items:center; gap:6px; padding:5px 8px; border-radius:4px; cursor:pointer; border:1px solid transparent; margin-bottom:3px; transition:background .1s; }
+.sti:hover { background:#1e2136; border-color:#272b47; }
+.sti.loaded { border-left:3px solid #4a6; }
+.stiname { flex:1; font-size:11px; }
+
+/* ── Sampling section ────────────────────────────────────── */
+.tile-sel-list { margin-bottom:8px; }
+.tile-sel-item { display:flex; align-items:center; gap:7px; padding:4px 0; font-size:11px; }
+.tile-sel-item input[type=checkbox] { accent-color:#3a7bd5; }
+.tile-sel-lbl { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.smpl-status {
+  font-size:12px; color:#d4b87a; padding:5px 0 7px;
+  min-height:22px; line-height:1.5;
+}
+.btn-run {
+  width:100%; padding:7px; border-radius:4px; cursor:pointer; font-size:12px; font-weight:700;
+  border:none; transition:all .15s; margin-bottom:5px;
+}
+.btn-sample { background:#1b3a6b; border:1px solid #3a7bd5; color:#7eb8f7; }
+.btn-sample:hover { background:#1e4480; }
+.btn-sample:disabled { opacity:.4; cursor:not-allowed; }
+
+/* ── Classify section ────────────────────────────────────── */
+.clf-tile-row { display:flex; align-items:center; gap:7px; margin-bottom:8px; }
+.clf-tile-row label { font-size:10px; color:#7a86a0; flex-shrink:0; }
+.clf-tile-sel { flex:1; background:#1e2136; border:1px solid #272b47; color:#d4d8e8; padding:4px 6px; border-radius:3px; font-size:11px; }
+.btn-classify { background:#1b3a2b; border:1px solid #2e7a4a; color:#5ec882; }
+.btn-classify:hover { background:#1f4a33; }
+.btn-classify:disabled { opacity:.4; cursor:not-allowed; }
+.btn-export { background:#1e1b2a; border:1px solid #5a4a8a; color:#c0a0f0; }
+.btn-export:hover { background:#252135; }
+.btn-export:disabled { opacity:.4; cursor:not-allowed; }
+.btn-cluster { background:#1a2a1a; border:1px solid #4a8a4a; color:#80d080; }
+.btn-cluster:hover { background:#1f3a1f; }
+.btn-cluster:disabled { opacity:.4; cursor:not-allowed; }
+.clf-status { font-size:12px; color:#a8d8d0; padding:4px 0 6px; min-height:22px; }
+.clf-opacity-row { display:flex; align-items:center; gap:7px; margin-bottom:8px; }
+.clf-opacity-row label { font-size:10px; color:#7a86a0; flex-shrink:0; }
+.clf-opacity-row input[type=range] { flex:1; height:3px; accent-color:#5ec882; }
+.clf-opacity-row span { font-size:10px; color:#8892aa; width:30px; text-align:right; }
+
+/* ── Subpanels ─────────────────────────────────────── */
+.subpanel { background:#13151f; border:1px solid #252840; border-radius:5px; padding:8px 10px; margin-bottom:10px; }
+.subpanel-hd { font-size:11px; font-weight:700; color:#a0b4d0; margin-bottom:8px; padding-bottom:5px; border-bottom:1px solid #1e2036; display:flex; align-items:center; gap:6px; }
+.btn-export-pair { display:flex; gap:5px; margin-top:5px; }
+.btn-export-pair .btn-run { flex:1; margin-bottom:0; font-size:11px; }
+
+/* ── CSV import/export ─────────────────────────────── */
+.csv-row { display:flex; align-items:center; gap:6px; margin-bottom:7px; flex-wrap:wrap; }
+.btn-csv { background:#1e2a1a; border:1px solid #3a6a3a; color:#80c080; padding:5px 10px; border-radius:3px; cursor:pointer; font-size:11px; font-weight:600; white-space:nowrap; }
+.btn-csv:hover { background:#253a25; }
+.btn-csv-export { background:#1e1a2a; border:1px solid #5a4a7a; color:#b090e0; }
+.btn-csv-export:hover { background:#25203a; }
+.help-wrap { position:relative; display:inline-flex; align-items:center; }
+.help-icon { display:inline-flex; align-items:center; justify-content:center; width:16px; height:16px; border-radius:50%; background:#1e2a46; border:1px solid #2d3a5a; color:#5a80c0; font-size:10px; font-weight:700; cursor:help; flex-shrink:0; }
+.help-tooltip { display:none; position:absolute; left:22px; top:-4px; z-index:2000; background:#1a1f35; border:1px solid #2d3a5a; border-radius:5px; padding:9px 11px; width:230px; font-size:10px; color:#c0cce0; line-height:1.7; white-space:normal; box-shadow:0 4px 16px #0009; }
+.help-tooltip code { background:#0f1220; padding:1px 4px; border-radius:2px; font-size:10px; color:#80c0e0; }
+.help-wrap:hover .help-tooltip { display:block; }
+
+.empty { font-size:11px; color:#6a7490; text-align:center; padding:8px 0; }
+
+/* ── CORS warning ────────────────────────────────────────── */
+#cwarn {
+  background:#2a1800; border:1px solid #c8922a; border-radius:5px;
+  padding:8px 10px; font-size:10px; color:#c8922a; margin-bottom:10px; display:none; line-height:1.6;
+}
+#cwarn code { background:#3a2500; padding:1px 4px; border-radius:3px; font-size:10px; }
+
+/* ── Leaflet overrides ───────────────────────────────────── */
+.leaflet-control-zoom a { background:#181a2a !important; color:#7eb8f7 !important; border-color:#252840 !important; }
+.leaflet-control-layers { background:#181a2a !important; border-color:#252840 !important; }
+</style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══════════════════════════════════════════════ -->
+<div id="hdr">
+  <a href="https://worldcereal.github.io" target="_blank" class="wc-logo-link" title="WorldCereal Project">
+    <img src="worldcereal_logo.jpg" alt="WorldCereal" class="wc-logo" onerror="this.style.display='none'">
+  </a>
+  <h1>🔬 Classify Embeddings</h1>
+  <span class="sub">Point sampling • Cosine similarity classifier • Viewport-adaptive</span>
+  <nav class="hdr-nav">
+    <a href="index.html" class="nav-pill">🗺 Viewer</a>
+    <span class="nav-pill active">🔬 Classify</span>
+  </nav>
+  <span id="hint-bar">Select a class then click the map to add training points</span>
+</div>
+
+<!-- ═══ MAIN ══════════════════════════════════════════════════ -->
+<div id="main">
+
+  <!-- ── LEFT SIDEBAR: Steps 1 & 3 ───────────────────────── -->
+  <div id="sb">
+    <div id="sb-scroll">
+
+      <div id="cwarn">
+        ⚠ <strong>CORS / network error.</strong> The S3 bucket needs:<br>
+        <code>Access-Control-Allow-Origin: *</code><br>
+        <code>Access-Control-Allow-Headers: Range, Content-Type</code>
+      </div>
+
+      <!-- ── STEP 1 ──────────────────────────────────────── -->
+      <div class="step-label">Step 1 · Load Embedding Tile(s)</div>
+
+      <!-- STAC Catalog at top of step 1 -->
+      <div class="sec">
+        <div class="sec-hd">STAC Catalog — presto-embeddings-uk</div>
+        <div class="stacbar">
+          <input class="stfil" id="stfil" type="text" placeholder="Filter…" oninput="filterSTAC()"/>
+          <button class="bsm" id="stbtn" onclick="fetchSTAC()">Fetch</button>
+        </div>
+        <div class="stlist" id="stlist"><div class="empty">Click Fetch to load items</div></div>
+      </div>
+
+      <!-- Embedding Layers below STAC -->
+      <div class="sec">
+        <div class="sec-hd">
+          Embedding Layers (128-band)
+          <span id="cnt-emb" class="sbadge">0</span>
+        </div>
+        <div id="lemb"><div class="empty">Load a tile from STAC above</div></div>
+      </div>
+
+      <!-- ── STEP 3 ──────────────────────────────────────── -->
+      <div class="step-label">Step 3 · Classify Viewport</div>
+
+      <!-- ── Supervised subpanel ──────────────────────── -->
+      <div class="subpanel">
+        <div class="subpanel-hd">🔬 Supervised</div>
+        <div class="clf-tile-row">
+          <label>Tile:</label>
+          <select class="clf-tile-sel" id="clf-tile-sel-spv"
+            onchange="CLF.lastTileIdSpv=parseInt(this.value)||null;updateSamplingUI()">
+            <option value="">— select tile —</option>
+          </select>
+        </div>
+        <div class="clf-tile-row">
+          <label>Algorithm:</label>
+          <select class="clf-tile-sel" id="clf-algo">
+            <option value="cosine">Cosine Similarity</option>
+            <option value="euclidean">Euclidean (Nearest Centroid)</option>
+            <option value="gaussian">Gaussian (Log-Likelihood)</option>
+          </select>
+        </div>
+        <div class="clf-opacity-row">
+          <label>Opacity</label>
+          <input type="range" min="0" max="1" step="0.05" value="0.75" id="clf-opacity-spv"
+            oninput="setClfOpacity('spv',this.value);this.nextElementSibling.textContent=Math.round(this.value*100)+'%'">
+          <span>75%</span>
+        </div>
+        <div class="clf-status" id="clf-status-spv">Sample first, then classify</div>
+        <button class="btn-run btn-classify" id="btn-classify" onclick="runClassification()" disabled>
+          ▶ Run Classifier
+        </button>
+        <div class="btn-export-pair">
+          <button class="btn-run btn-export" id="btn-export-spv" onclick="exportClassPNG()" disabled>↓ Class PNG</button>
+          <button class="btn-run btn-export" id="btn-export-emb-spv" onclick="exportEmbeddingsPNG('clf-tile-sel-spv')" disabled>↓ Embed PNG</button>
+        </div>
+      </div>
+
+      <!-- ── Unsupervised subpanel ──────────────────────── -->
+      <div class="subpanel">
+        <div class="subpanel-hd">🔀 Unsupervised (K-means)</div>
+        <div class="clf-tile-row">
+          <label>Tile:</label>
+          <select class="clf-tile-sel" id="clf-tile-sel-unspv"
+            onchange="CLF.lastTileIdUnspv=parseInt(this.value)||null;updateSamplingUI()">
+            <option value="">— select tile —</option>
+          </select>
+        </div>
+        <div class="clf-tile-row" style="align-items:center;">
+          <label>K clusters:</label>
+          <input type="number" id="kmeans-k" min="2" max="20" value="3" class="binp" style="width:55px;flex-shrink:0;">
+          <span style="font-size:10px;color:#4a5570;flex:1;margin-left:4px;">auto-set from classes</span>
+        </div>
+        <div class="clf-opacity-row">
+          <label>Opacity</label>
+          <input type="range" min="0" max="1" step="0.05" value="0.75" id="clf-opacity-unspv"
+            oninput="setClfOpacity('unspv',this.value);this.nextElementSibling.textContent=Math.round(this.value*100)+'%'">
+          <span>75%</span>
+        </div>
+        <div class="clf-status" id="clf-status-unspv">Select tile and run K-means</div>
+        <button class="btn-run btn-cluster" id="btn-cluster" onclick="runClustering()" disabled>
+          🔀 Run K-means
+        </button>
+        <div class="btn-export-pair">
+          <button class="btn-run btn-export" id="btn-export-unspv" onclick="exportClusterPNG()" disabled>↓ Cluster PNG</button>
+          <button class="btn-run btn-export" id="btn-export-emb-unspv" onclick="exportEmbeddingsPNG('clf-tile-sel-unspv')" disabled>↓ Embed PNG</button>
+        </div>
+      </div>
+
+    </div><!-- /sb-scroll -->
+  </div><!-- /sb -->
+
+  <div id="sb-handle" title="Drag to resize sidebar"></div>
+
+  <!-- ── MAP ──────────────────────────────────────────────── -->
+  <div id="mapc">
+    <div id="map"></div>
+  </div>
+
+  <!-- ── RIGHT PANEL: Step 2 ──────────────────────────────── -->
+  <div id="cp-handle" title="Drag to resize panel"></div>
+
+  <div id="cp">
+    <div id="cp-scroll">
+
+      <!-- ── STEP 2 ──────────────────────────────────────── -->
+      <div class="step-label">Step 2 · Add Class Samples</div>
+
+      <!-- Classes -->
+      <div class="sec">
+        <div class="sec-hd">
+          Classes
+          <span id="cnt-cls" class="sbadge">0</span>
+        </div>
+
+        <!-- New class form -->
+        <div class="new-class-row">
+          <input type="text" id="new-cls-name" placeholder="Class name…" maxlength="28"
+            onkeydown="if(event.key==='Enter') addNewClass()">
+          <input type="color" id="new-cls-color" class="cls-colorpick" value="#e05252">
+          <button class="badd-cls" onclick="addNewClass()">+ Add</button>
+        </div>
+
+        <!-- Class list with expandable per-point delete -->
+        <div id="cls-list"><div class="empty">No classes yet</div></div>
+
+        <!-- Add-points mode bar -->
+        <div class="add-pts-bar" id="add-pts-bar">
+          <span class="add-pts-lbl" id="add-pts-lbl">Select a class above to add points</span>
+          <button class="btn-addpts" id="btn-addpts" onclick="toggleAddMode()" disabled>+ Add Points</button>
+        </div>
+      </div>
+
+      <!-- Sample Training Points -->
+      <div class="sec">
+        <div class="sec-hd">Sample Training Points</div>
+        <div style="font-size:10px;color:#7a86a0;margin-bottom:6px;">
+          Select tiles to sample from (point must fall within tile extent):
+        </div>
+        <div class="tile-sel-list" id="tile-sel-list">
+          <div class="empty">Load embedding tiles first</div>
+        </div>
+        <div class="smpl-status" id="smpl-status">Add class points and load a tile to sample</div>
+        <button class="btn-run btn-sample" id="btn-sample" onclick="runSampling()" disabled>
+          ▶ Run Sampling
+        </button>
+      </div>
+
+      <!-- CSV Import / Export -->
+      <div class="sec">
+        <div class="sec-hd">Import / Export Points</div>
+        <div class="csv-row">
+          <button class="btn-csv" onclick="importCSV()">⬆ Import CSV</button>
+          <div class="help-wrap">
+            <span class="help-icon">?</span>
+            <div class="help-tooltip">
+              <strong>Expected CSV format:</strong><br>
+              <code>class_name,latitude,longitude</code><br><br>
+              • First row can be a header (auto-detected)<br>
+              • Separator: comma, tab, or semicolon<br>
+              • Column names recognized: <code>class</code>, <code>label</code>, <code>lat</code>, <code>latitude</code>, <code>lon</code>, <code>longitude</code><br>
+              • New class names are created automatically<br><br>
+              <strong>Example:</strong><br>
+              <code>Wheat,51.234,-1.456</code><br>
+              <code>Forest,52.100,-0.800</code>
+            </div>
+          </div>
+          <input type="file" id="csv-file-input" accept=".csv,.txt,.tsv" style="display:none" onchange="handleCSVFile(this)">
+        </div>
+        <div class="csv-row">
+          <button class="btn-csv btn-csv-export" onclick="exportCSV()">⬇ Export CSV</button>
+          <span style="font-size:10px;color:#5a6480;">Save all points in reimportable format</span>
+        </div>
+      </div>
+
+    </div><!-- /cp-scroll -->
+  </div><!-- /cp -->
+
+</div><!-- /main -->
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════
+// CONFIG
+// ═══════════════════════════════════════════════════════════
+const CFG = {
+  S3:     'https://s3.waw4-1.cloudferro.com',
+  BUCKET: 'worldcereal-uk-waw4-1-o2q1qptnzbki8vavzriorqk0498vwc6tqvxlzvnw5',
+  PREFIX: 'worldcereal_uk_production_embeddings_displays',
+  STAC_BASE: 'https://stac.openeo.vito.be',
+  STAC_COL:  'presto-embeddings-uk',
+  EMB_BANDS:  [54, 67, 76],
+  STRETCH_LO: 1,
+  STRETCH_HI: 99,
+  THUMB_W_EMB: 512,
+  REFRESH_DELAY: 400,
+  MAX_CLF_DIM: 384,    // max pixels per side for classification canvas
+  PROJ: {
+    3035: '+proj=laea +lat_0=52 +lon_0=10 +x_0=4321000 +y_0=3210000 +ellps=GRS80 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs',
+    3857: '+proj=merc +a=6378137 +b=6378137 +lat_ts=0 +lon_0=0 +x_0=0 +y_0=0 +k=1 +units=m +no_defs',
+    4326: '+proj=longlat +datum=WGS84 +no_defs',
+    32628:'+proj=utm +zone=28 +datum=WGS84 +units=m +no_defs',
+    32629:'+proj=utm +zone=29 +datum=WGS84 +units=m +no_defs',
+    32630:'+proj=utm +zone=30 +datum=WGS84 +units=m +no_defs',
+    32631:'+proj=utm +zone=31 +datum=WGS84 +units=m +no_defs',
+    32632:'+proj=utm +zone=32 +datum=WGS84 +units=m +no_defs',
+    32633:'+proj=utm +zone=33 +datum=WGS84 +units=m +no_defs',
+    32634:'+proj=utm +zone=34 +datum=WGS84 +units=m +no_defs',
+  }
+};
+
+// Default color palette for new classes
+const CLASS_PALETTE = [
+  '#e63946','#2196F3','#4CAF50','#FF9800','#9C27B0',
+  '#00BCD4','#FFEB3B','#FF5722','#3F51B5','#009688',
+];
+
+Object.entries(CFG.PROJ).forEach(([c,d]) => proj4.defs(`EPSG:${c}`, d));
+proj4.defs('WGS84', CFG.PROJ[4326]);
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+const S = {
+  map: null,
+  layers: [],
+  nextId: 1,
+  stacRaw: [], stacItems: [],
+  refreshTimers: {},
+};
+
+// Classes
+const CLS = {
+  classes: [],   // [{id, name, color, expanded}]
+  nextId:  1,
+  activeId: null,
+  addMode: false,
+};
+
+// Sampling state — each point has a unique ptId and stores its marker
+const SMPL = {
+  data:   [],        // [{ptId, lat, lng, classId, values:Float32Array|null, marker}]
+  nextPtId: 1,
+  done:   false,
+  running: false,
+};
+
+// Classifier state
+const CLF = {
+  centroids:      null,   // Map<classId, {mean, rawMean, variance, logVar, r,g,b, name}>
+  overlay:        null,   // L.imageOverlay — supervised result
+  overlayCluster: null,   // L.imageOverlay — k-means result
+  opacitySpv:     0.75,
+  opacityUnspv:   0.75,
+  running:        false,
+  hasRun:         false,  // true after first successful supervised classification
+  lastTileIdSpv:  null,   // persists supervised tile selection
+  lastTileIdUnspv:null,   // persists unsupervised tile selection
+  scheduleTimer:  null,
+  lastCanvasSpv:  null,   // canvas from last supervised run
+  lastCanvasUnspv:null,   // canvas from last k-means run
+};
+
+// ═══════════════════════════════════════════════════════════
+// MAP
+// ═══════════════════════════════════════════════════════════
+function initMap() {
+  S.map = L.map('map', { center:[54.3,-2.5], zoom:7 });
+
+  S.map.createPane('clf-overlay');
+  S.map.getPane('clf-overlay').style.zIndex = 420;
+  S.map.createPane('training-pts');
+  S.map.getPane('training-pts').style.zIndex = 620;
+
+  const esri = L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    { attribution:'© Esri', maxZoom:19 }
+  ).addTo(S.map);
+  const carto = L.tileLayer(
+    'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+    { attribution:'© OpenStreetMap © CARTO', maxZoom:19, subdomains:'abcd' }
+  );
+  L.control.layers({'Esri Satellite':esri,'CartoDB Dark':carto},{},{position:'topright'}).addTo(S.map);
+
+  S.map.on('zoomend moveend', () => {
+    S.layers.forEach(l => { if (l.visible && l.tiff) scheduleRefresh(l.id); });
+    scheduleClassification();
+  });
+  S.map.on('click', onMapClick);
+}
+
+// ═══════════════════════════════════════════════════════════
+// PROJECTION HELPERS
+// ═══════════════════════════════════════════════════════════
+function getEPSG(image) {
+  const gk = image.geoKeys || {};
+  return gk.ProjectedCSTypeGeoKey || gk.GeographicTypeGeoKey || 4326;
+}
+function getProjDef(epsg) {
+  const key = `EPSG:${epsg}`;
+  return proj4.defs(key) ? key : 'EPSG:3035';
+}
+function toWGS84(projDef, x, y) {
+  if (projDef==='EPSG:4326'||projDef==='WGS84') return {lat:y,lng:x};
+  const [lng,lat] = proj4(projDef,'WGS84',[x,y]);
+  return {lat,lng};
+}
+function fromWGS84(projDef, lat, lng) {
+  if (projDef==='EPSG:4326'||projDef==='WGS84') return {x:lng,y:lat};
+  const [x,y] = proj4('WGS84',projDef,[lng,lat]);
+  return {x,y};
+}
+function nativeRectToWGS84Bounds(projDef, minX, minY, maxX, maxY) {
+  const N=12; let minLat=Infinity,maxLat=-Infinity,minLng=Infinity,maxLng=-Infinity;
+  for (let i=0;i<=N;i++) {
+    const t=i/N, mx=minX+t*(maxX-minX), my=minY+t*(maxY-minY);
+    for (const [x,y] of [[mx,minY],[mx,maxY],[minX,my],[maxX,my]]) {
+      const p=toWGS84(projDef,x,y);
+      if(p.lat<minLat)minLat=p.lat; if(p.lat>maxLat)maxLat=p.lat;
+      if(p.lng<minLng)minLng=p.lng; if(p.lng>maxLng)maxLng=p.lng;
+    }
+  }
+  return L.latLngBounds([minLat,minLng],[maxLat,maxLng]);
+}
+function computeWGS84Extent(origin,res,w,h,projDef) {
+  const [ox,oy]=origin,[rx,ry]=res;
+  const x1=ox+w*rx, y1=oy+h*ry;
+  return nativeRectToWGS84Bounds(projDef,Math.min(ox,x1),Math.min(oy,y1),Math.max(ox,x1),Math.max(oy,y1));
+}
+
+// ═══════════════════════════════════════════════════════════
+// OVERVIEW SELECTION
+// ═══════════════════════════════════════════════════════════
+async function buildImageList(tiff) {
+  const count = await tiff.getImageCount();
+  const list = [];
+  for (let i=0; i<count; i++) {
+    try { list.push({i, img:await tiff.getImage(i), w:(await tiff.getImage(i)).getWidth()}); }
+    catch(e) { break; }
+  }
+  return list.sort((a,b)=>b.w-a.w);
+}
+function pickOverview(images, targetWidth) {
+  const over = images.filter(x=>x.w>=targetWidth);
+  return over.length ? over[over.length-1].img : images[0].img;
+}
+
+// ═══════════════════════════════════════════════════════════
+// MESH WARP
+// ═══════════════════════════════════════════════════════════
+function meshWarpToCanvas(rasters,rW,rH,laeaMinX,laeaMaxY,laeaMaxX,laeaMinY,
+                          projDef,wgs84Bounds,outW,outH,stretches,nodata) {
+  const MESH=16,MW=MESH+1;
+  const west=wgs84Bounds.getWest(),east=wgs84Bounds.getEast();
+  const north=wgs84Bounds.getNorth(),south=wgs84Bounds.getSouth();
+  const dLng=east-west,dLat=north-south;
+  const rSpanX=laeaMaxX-laeaMinX,rSpanY=laeaMinY-laeaMaxY;
+  const meshC=new Float32Array(MW*MW),meshR=new Float32Array(MW*MW);
+  for (let mj=0;mj<MW;mj++) {
+    const lat=north-(mj/MESH)*dLat;
+    for (let mi=0;mi<MW;mi++) {
+      const lng=west+(mi/MESH)*dLng;
+      try {
+        const [nx,ny]=proj4('WGS84',projDef,[lng,lat]);
+        meshC[mj*MW+mi]=(nx-laeaMinX)/rSpanX*rW;
+        meshR[mj*MW+mi]=(ny-laeaMaxY)/rSpanY*rH;
+      } catch(e) { meshC[mj*MW+mi]=-1; meshR[mj*MW+mi]=-1; }
+    }
+  }
+  const canvas=document.createElement('canvas');
+  canvas.width=outW; canvas.height=outH;
+  const ctx=canvas.getContext('2d');
+  const imgD=ctx.createImageData(outW,outH);
+  const d=imgD.data;
+  for (let py=0;py<outH;py++) {
+    const mj=py/outH*MESH,mj0=Math.min(Math.floor(mj),MESH-1),mj1=mj0+1,ty=mj-mj0,omty=1-ty;
+    for (let px=0;px<outW;px++) {
+      const mi=px/outW*MESH,mi0=Math.min(Math.floor(mi),MESH-1),mi1=mi0+1,tx=mi-mi0,omtx=1-tx;
+      const i00=mj0*MW+mi0,i01=mj0*MW+mi1,i10=mj1*MW+mi0,i11=mj1*MW+mi1;
+      const col=meshC[i00]*omtx*omty+meshC[i01]*tx*omty+meshC[i10]*omtx*ty+meshC[i11]*tx*ty;
+      const row=meshR[i00]*omtx*omty+meshR[i01]*tx*omty+meshR[i10]*omtx*ty+meshR[i11]*tx*ty;
+      const c=Math.round(col),r=Math.round(row);
+      if(c<0||c>=rW||r<0||r>=rH) continue;
+      const ri=r*rW+c;
+      const vr=rasters[0][ri],vg=rasters[1][ri],vb=rasters[2][ri];
+      if(isNodataPixel(vr,vg,vb,nodata)) continue;
+      const oi=(py*outW+px)*4;
+      d[oi]=stretchVal(vr,stretches[0]); d[oi+1]=stretchVal(vg,stretches[1]);
+      d[oi+2]=stretchVal(vb,stretches[2]); d[oi+3]=255;
+    }
+  }
+  ctx.putImageData(imgD,0,0);
+  return canvas.toDataURL('image/png');
+}
+
+// ═══════════════════════════════════════════════════════════
+// STRETCH + CANVAS
+// ═══════════════════════════════════════════════════════════
+// NOTE: nodata param (e.g. 255 for sea areas) is excluded from stretch calculation
+function computePercentile(arr, pLo, pHi, nodata) {
+  const step = Math.max(1, Math.floor(arr.length / 100000));
+  const vals = [];
+  for (let i = 0; i < arr.length; i += step) {
+    const v = arr[i];
+    if (!isFinite(v) || isNaN(v) || v === 0) continue;
+    // ↓↓ Skip nodata value (e.g. 255 for sea/background pixels) ↓↓
+    if (nodata !== null && nodata !== undefined && v === nodata) continue;
+    vals.push(v);
+  }
+  if (!vals.length) return { min: 0, max: 1 };
+  vals.sort((a, b) => a - b);
+  const lo = Math.max(0, Math.floor(pLo / 100 * vals.length));
+  const hi = Math.min(vals.length - 1, Math.ceil(pHi / 100 * vals.length) - 1);
+  const mn = vals[lo], mx = vals[hi];
+  return { min: mn, max: mx === mn ? mn + 1 : mx };
+}
+function stretchVal(v,s) {
+  if (v==null||!isFinite(v)) return 0;
+  return Math.max(0,Math.min(255,Math.round((v-s.min)/(s.max-s.min)*255)));
+}
+function isNodataPixel(vr,vg,vb,nd) {
+  if (nd!==null&&nd!==undefined) return vr===nd&&vg===nd&&vb===nd;
+  return vr===0&&vg===0&&vb===0;
+}
+function rastersToDataURL(rR,rG,rB,w,h,sR,sG,sB,nodata) {
+  const canvas=document.createElement('canvas');
+  canvas.width=w; canvas.height=h;
+  const ctx=canvas.getContext('2d');
+  const img=ctx.createImageData(w,h);
+  const d=img.data;
+  for (let i=0;i<w*h;i++) {
+    const vr=rR[i],vg=rG[i],vb=rB[i];
+    if(!isFinite(vr)||!isFinite(vg)||!isFinite(vb)||isNodataPixel(vr,vg,vb,nodata)){d[i*4+3]=0;continue;}
+    d[i*4]=stretchVal(vr,sR); d[i*4+1]=stretchVal(vg,sG);
+    d[i*4+2]=stretchVal(vb,sB); d[i*4+3]=255;
+  }
+  ctx.putImageData(img,0,0);
+  return canvas.toDataURL('image/png');
+}
+
+// ═══════════════════════════════════════════════════════════
+// COG LOADER
+// ═══════════════════════════════════════════════════════════
+async function loadCOG(layerId) {
+  const layer = getLayer(layerId);
+  if (!layer) return;
+  const bands0 = layer.bandIndices1.map(b=>b-1);
+  setStatus(layerId,'load','Opening COG…');
+  let tiff, images;
+  try {
+    tiff   = await GeoTIFF.fromUrl(layer.url,{allowFullFile:false});
+    images = await buildImageList(tiff);
+  } catch(err) { handleErr(layerId,err); return; }
+
+  const fullImg = images[0].img;
+  const epsg    = getEPSG(fullImg);
+  const projDef = getProjDef(epsg);
+  const origin  = fullImg.getOrigin();
+  const res     = fullImg.getResolution();
+  const fullW   = fullImg.getWidth();
+  const fullH   = fullImg.getHeight();
+  const numBands= fullImg.getSamplesPerPixel();
+  const nodata  = fullImg.getGDALNoData();
+
+  let fullBounds;
+  try { fullBounds = computeWGS84Extent(origin,res,fullW,fullH,projDef); }
+  catch(e) { handleErr(layerId,new Error(`Projection EPSG:${epsg}: ${e.message}`)); return; }
+
+  updateLayer(layerId,{tiff,images,projDef,epsg,origin,res,fullW,fullH,numBands,fullBounds,nodata});
+  setStatus(layerId,'load',`Fetching overview…`);
+
+  const ovImg = pickOverview(images, CFG.THUMB_W_EMB);
+  const ovW=ovImg.getWidth(), ovH=ovImg.getHeight();
+  const outW=Math.min(CFG.THUMB_W_EMB,ovW);
+  const outH=Math.round(ovH*outW/ovW);
+
+  let rasters;
+  try {
+    rasters = await ovImg.readRasters({samples:bands0,width:outW,height:outH,interleave:false,fillValue:0});
+  } catch(err) { handleErr(layerId,err); return; }
+
+  // Pass nodata to computePercentile so sea-area 255 values don't corrupt stretch
+  const stretches = [0,1,2].map(i => computePercentile(Array.from(rasters[i]), CFG.STRETCH_LO, CFG.STRETCH_HI, nodata));
+
+  const dataURL = rastersToDataURL(rasters[0],rasters[1],rasters[2],outW,outH,stretches[0],stretches[1],stretches[2],nodata);
+  const leafletLayer = L.imageOverlay(dataURL,fullBounds,{opacity:layer.opacity,interactive:false});
+  if (layer.visible) leafletLayer.addTo(S.map);
+  if (layer.visible&&layer.autoZoom) S.map.fitBounds(fullBounds,{padding:[20,20]});
+
+  updateLayer(layerId,{
+    leafletLayer, stretches,
+    currentRasters:[rasters[0],rasters[1],rasters[2]],
+    currentWindow:[0,0,fullW,fullH], currentOutW:outW, currentOutH:outH,
+    status:'ok', statusMsg:`${fullW}×${fullH}px • EPSG:${epsg} • ${numBands} bands`,
+  });
+  renderLists();
+  scheduleRefresh(layerId);
+}
+
+// ── Viewport refresh ──────────────────────────────────────
+function scheduleRefresh(layerId) {
+  clearTimeout(S.refreshTimers[layerId]);
+  S.refreshTimers[layerId] = setTimeout(()=>refreshViewport(layerId), CFG.REFRESH_DELAY);
+}
+
+async function refreshViewport(layerId) {
+  const layer = getLayer(layerId);
+  if (!layer?.tiff||!layer.visible||!layer.leafletLayer) return;
+  const {images,projDef,epsg,origin,res,fullW,fullH,stretches,bandIndices1,nodata} = layer;
+  const bands0 = bandIndices1.map(b=>b-1);
+  const [ox,oy]=origin, [rx,ry]=res;
+  const mb=S.map.getBounds(), msize=S.map.getSize();
+  const dpr=window.devicePixelRatio||1;
+  const needsWarp = epsg!==4326&&epsg!==3857;
+  const cogMinX=Math.min(ox,ox+fullW*rx),cogMaxX=Math.max(ox,ox+fullW*rx);
+  const cogMinY=Math.min(oy,oy+fullH*ry),cogMaxY=Math.max(oy,oy+fullH*ry);
+  const midLat=(mb.getSouth()+mb.getNorth())/2, midLng=(mb.getWest()+mb.getEast())/2;
+  let vMinX=Infinity,vMaxX=-Infinity,vMinY=Infinity,vMaxY=-Infinity;
+  for (const [la,ln] of [
+    [mb.getSouth(),mb.getWest()],[mb.getSouth(),mb.getEast()],
+    [mb.getNorth(),mb.getWest()],[mb.getNorth(),mb.getEast()],
+    [midLat,mb.getWest()],[midLat,mb.getEast()],
+    [mb.getSouth(),midLng],[mb.getNorth(),midLng],
+  ]) {
+    try { const {x,y}=fromWGS84(projDef,la,ln); if(x<vMinX)vMinX=x; if(x>vMaxX)vMaxX=x; if(y<vMinY)vMinY=y; if(y>vMaxY)vMaxY=y; } catch(e) {}
+  }
+  const cMinX=Math.max(vMinX,cogMinX),cMaxX=Math.min(vMaxX,cogMaxX);
+  const cMinY=Math.max(vMinY,cogMinY),cMaxY=Math.min(vMaxY,cogMaxY);
+  if (cMinX>=cMaxX||cMinY>=cMaxY) return;
+  const colMin=Math.max(0,Math.floor((cMinX-ox)/rx));
+  const colMax=Math.min(fullW,Math.ceil((cMaxX-ox)/rx));
+  const rowMin=Math.max(0,Math.floor((cMaxY-oy)/ry));
+  const rowMax=Math.min(fullH,Math.ceil((cMinY-oy)/ry));
+  if (colMin>=colMax||rowMin>=rowMax) return;
+  const nativeCols=colMax-colMin,nativeRows=rowMax-rowMin;
+  const outW=Math.min(Math.round(msize.x*dpr),2048);
+  const outH=Math.min(Math.round(msize.y*dpr),2048);
+  const ovImg=pickOverview(images,Math.min(Math.round(outW*fullW/nativeCols),fullW));
+  const scale=fullW/ovImg.getWidth();
+  const ovColMin=Math.max(0,Math.floor(colMin/scale));
+  const ovColMax=Math.min(ovImg.getWidth(),Math.ceil(colMax/scale));
+  const ovRowMin=Math.max(0,Math.floor(rowMin/scale));
+  const ovRowMax=Math.min(ovImg.getHeight(),Math.ceil(rowMax/scale));
+  setStatus(layerId,'load',needsWarp?'Warping…':'Reading…');
+  let rasters;
+  try {
+    rasters = await ovImg.readRasters({window:[ovColMin,ovRowMin,ovColMax,ovRowMax],samples:bands0,width:outW,height:outH,interleave:false,fillValue:0});
+  } catch(err) { setStatus(layerId,'ok',layer.statusMsg); return; }
+  let dataURL, newBounds;
+  if (needsWarp) {
+    const nMinX=ox+colMin*rx,nMaxY=oy+rowMin*ry,nMaxX=ox+colMax*rx,nMinY=oy+rowMax*ry;
+    newBounds=mb;
+    dataURL=meshWarpToCanvas([rasters[0],rasters[1],rasters[2]],outW,outH,nMinX,nMaxY,nMaxX,nMinY,projDef,newBounds,outW,outH,stretches,nodata);
+  } else {
+    const tileSW=toWGS84(projDef,cMinX,cMinY),tileNE=toWGS84(projDef,cMaxX,cMaxY);
+    newBounds=L.latLngBounds([tileSW.lat,tileSW.lng],[tileNE.lat,tileNE.lng]);
+    dataURL=rastersToDataURL(rasters[0],rasters[1],rasters[2],outW,outH,stretches[0],stretches[1],stretches[2],nodata);
+  }
+  layer.leafletLayer.setUrl(dataURL); layer.leafletLayer.setBounds(newBounds);
+  updateLayer(layerId,{currentRasters:[rasters[0],rasters[1],rasters[2]],currentWindow:[colMin,rowMin,colMax,rowMax],currentOutW:outW,currentOutH:outH,status:'ok',statusMsg:`${nativeCols}×${nativeRows}px • EPSG:${epsg}`});
+  renderLists();
+}
+
+// ── Recompute stretch from cached viewport rasters ────────
+function restretchLayer(id) {
+  const l = getLayer(id);
+  if (!l?.currentRasters) return;
+  // Pass nodata so sea-area 255 values are excluded from stretch
+  const stretches = [0,1,2].map(i =>
+    computePercentile(Array.from(l.currentRasters[i]), CFG.STRETCH_LO, CFG.STRETCH_HI, l.nodata)
+  );
+  updateLayer(id, { stretches });
+  scheduleRefresh(id);
+  renderLists();
+}
+
+// ── Reload bands + auto-recompute stretch ─────────────────
+async function reloadBands(layerId) {
+  const layer=getLayer(layerId); if(!layer) return;
+  const r=parseInt(document.getElementById(`br-${layerId}`)?.value);
+  const g=parseInt(document.getElementById(`bg-${layerId}`)?.value);
+  const b=parseInt(document.getElementById(`bb-${layerId}`)?.value);
+  if([r,g,b].some(v=>isNaN(v)||v<1)){alert('Band numbers must be ≥ 1');return;}
+  if(layer.numBands&&[r,g,b].some(v=>v>layer.numBands)){alert(`Band numbers must be ≤ ${layer.numBands}`);return;}
+  if(layer.leafletLayer) S.map.removeLayer(layer.leafletLayer);
+  updateLayer(layerId,{leafletLayer:null,bandIndices1:[r,g,b],autoZoom:false,tiff:null,images:null});
+  await loadCOG(layerId);
+}
+
+// ═══════════════════════════════════════════════════════════
+// LAYER STATE
+// ═══════════════════════════════════════════════════════════
+function mkLayer(name,url) {
+  return {
+    id:S.nextId++, name, url, type:'embed',
+    visible:true, opacity:1,
+    bandIndices1:[...CFG.EMB_BANDS],
+    autoZoom:true,
+    leafletLayer:null, tiff:null, images:null,
+    projDef:null, epsg:null, origin:null, res:null,
+    fullW:0, fullH:0, numBands:0,
+    fullBounds:null, stretches:null, nodata:null,
+    currentRasters:null, currentWindow:null, currentOutW:0, currentOutH:0,
+    stacId:null, status:'load', statusMsg:'Queued…',
+  };
+}
+function getLayer(id) { return S.layers.find(l=>l.id===id); }
+function updateLayer(id,patch) { const l=getLayer(id); if(l) Object.assign(l,patch); }
+function setStatus(id,s,msg) { updateLayer(id,{status:s,statusMsg:msg}); renderLists(); }
+
+function removeLayer(id) {
+  const l=getLayer(id);
+  if(l?.leafletLayer) S.map.removeLayer(l.leafletLayer);
+  clearTimeout(S.refreshTimers[id]);
+  S.layers=S.layers.filter(x=>x.id!==id);
+  renderLists(); renderSTAC(); updateTileSelectors();
+}
+
+function toggleVis(id) {
+  const l=getLayer(id); if(!l?.leafletLayer) return;
+  l.visible=!l.visible;
+  if(l.visible){l.leafletLayer.addTo(S.map); if(l.tiff) scheduleRefresh(id);}
+  else S.map.removeLayer(l.leafletLayer);
+  renderLists();
+}
+function setOpacity(id,v) {
+  const l=getLayer(id); if(!l) return;
+  l.opacity=parseFloat(v); l.leafletLayer?.setOpacity?.(l.opacity);
+}
+function handleErr(id,err) {
+  const msg=(err?.message||String(err)).slice(0,150);
+  if(/fetch|CORS|network|NetworkError/i.test(msg)) document.getElementById('cwarn').style.display='block';
+  setStatus(id,'err',msg); renderLists();
+}
+
+// ── Render embedding layer list ──────────────────────────
+function renderLists() {
+  const layers = S.layers;
+  const cnt = document.getElementById('cnt-emb');
+  cnt.textContent = layers.length;
+  cnt.className = 'sbadge '+(layers.length?'bok':'');
+  const el = document.getElementById('lemb');
+  if (!layers.length) { el.innerHTML='<div class="empty">Load a tile from STAC above</div>'; updateTileSelectors(); return; }
+  layers.forEach((l,i)=>{ if(l.leafletLayer?.setZIndex) l.leafletLayer.setZIndex(300-i); });
+  el.innerHTML = layers.map(l=>{
+    const cc=l.status==='ok'&&l.visible?'vis':l.status==='err'?'err':l.status==='load'?'load':'';
+    const sc={ok:'sok',load:'sload',err:'serr'}[l.status]||'sload';
+    const sp=l.status==='load'?'<span class="spin"></span>':'';
+    const da=l.status!=='ok'?'disabled':'';
+    const bi=l.bandIndices1||[1,2,3];
+    const maxB=l.numBands||128;
+    return `
+<div class="lcard ${cc}">
+  <div class="lrow">
+    <input class="lchk" type="checkbox" ${l.visible?'checked':''} ${da} onchange="toggleVis(${l.id})">
+    <span class="lname" title="${esc(l.name)}">${esc(l.name)}</span>
+    <button class="ldel" onclick="removeLayer(${l.id})">✕</button>
+  </div>
+  <div class="loprow">
+    <label>Opacity</label>
+    <input type="range" min="0" max="1" step="0.05" value="${l.opacity}" ${da}
+      oninput="setOpacity(${l.id},this.value);this.nextElementSibling.textContent=Math.round(this.value*100)+'%'">
+    <span>${Math.round(l.opacity*100)}%</span>
+  </div>
+  <div class="brow">
+    <label>R/G/B:</label>
+    <input class="binp" id="br-${l.id}" type="number" min="1" max="${maxB}" value="${bi[0]}">
+    <input class="binp" id="bg-${l.id}" type="number" min="1" max="${maxB}" value="${bi[1]}">
+    <input class="binp" id="bb-${l.id}" type="number" min="1" max="${maxB}" value="${bi[2]}">
+    <button class="bxs" onclick="reloadBands(${l.id})" ${da}>Apply</button>
+    <button class="bxs" onclick="restretchLayer(${l.id})" ${l.currentRasters?'':'disabled'}
+      title="Recompute 1–99% stretch (excludes nodata)">↺</button>
+  </div>
+  <div class="lstat ${sc}">${sp}${esc(l.statusMsg)}</div>
+</div>`;
+  }).join('');
+  updateTileSelectors();
+}
+
+// ═══════════════════════════════════════════════════════════
+// STAC
+// ═══════════════════════════════════════════════════════════
+async function fetchSTAC() {
+  const btn=document.getElementById('stbtn');
+  btn.textContent='…'; btn.disabled=true;
+  try {
+    const res=await fetch(`${CFG.STAC_BASE}/collections/${CFG.STAC_COL}/items?limit=200`);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data=await res.json();
+    S.stacRaw=data.features||data.items||[];
+    S.stacItems=[...S.stacRaw];
+    renderSTAC();
+  } catch(e) {
+    document.getElementById('stlist').innerHTML=`<div class="empty" style="color:#c0392b">Error: ${esc(e.message)}</div>`;
+  }
+  btn.textContent='Refresh'; btn.disabled=false;
+}
+function filterSTAC() {
+  const q=document.getElementById('stfil').value.toLowerCase();
+  S.stacItems=q?S.stacRaw.filter(i=>i.id.toLowerCase().includes(q)):[...S.stacRaw];
+  renderSTAC();
+}
+function renderSTAC() {
+  const el=document.getElementById('stlist');
+  if(!S.stacItems.length){el.innerHTML='<div class="empty">No items</div>';return;}
+  el.innerHTML=S.stacItems.map(item=>{
+    const loaded=S.layers.some(l=>l.stacId===item.id);
+    return `<div class="sti ${loaded?'loaded':''}" onclick="loadSTACItem('${esc(item.id)}')">
+      <span class="stiname">${esc(item.id)}</span>
+      ${loaded?'<span style="color:#4a6;font-size:11px">✓</span>':'<span style="color:#3a7bd5;font-size:17px;line-height:1">+</span>'}
+    </div>`;
+  }).join('');
+}
+async function loadSTACItem(itemId) {
+  try {
+    const res=await fetch(`${CFG.STAC_BASE}/collections/${CFG.STAC_COL}/items/${encodeURIComponent(itemId)}`);
+    if(!res.ok) throw new Error(`HTTP ${res.status}`);
+    const item=await res.json();
+    const assets=item.assets||{};
+    const keys=Object.keys(assets);
+    const key=keys.find(k=>k==='data'||k==='embeddings'||k==='cog')||keys.find(k=>(assets[k].type||'').includes('tiff'))||keys[0];
+    if(!key) throw new Error('No COG asset found');
+    const href=assets[key].href;
+    const url=href.startsWith('http')?href:new URL(href,`${CFG.STAC_BASE}/collections/${CFG.STAC_COL}/items/${itemId}`).href;
+    const layer=mkLayer(itemId,url);
+    layer.stacId=itemId;
+    S.layers.push(layer);
+    renderLists(); renderSTAC();
+    await loadCOG(layer.id);
+  } catch(e) { alert(`Failed to load "${itemId}": ${e.message}`); }
+}
+
+// ═══════════════════════════════════════════════════════════
+// CLASSES
+// ═══════════════════════════════════════════════════════════
+function addNewClass() {
+  const nameEl=document.getElementById('new-cls-name');
+  const name=nameEl.value.trim()||`Class ${CLS.nextId}`;
+  const color=document.getElementById('new-cls-color').value;
+  const id=CLS.nextId++;
+  CLS.classes.push({id, name, color, expanded: false});
+  nameEl.value='';
+  document.getElementById('new-cls-color').value = CLASS_PALETTE[CLS.classes.length % CLASS_PALETTE.length];
+  if (!CLS.activeId) setActiveClass(id);
+  updateKDefault();
+  renderClassList();
+  updateSamplingUI();
+}
+
+function deleteClass(id) {
+  // Remove all markers for this class from the map
+  SMPL.data.filter(d=>d.classId===id).forEach(d=>{ try{S.map.removeLayer(d.marker);}catch(e){} });
+  // Remove sampled data for this class
+  SMPL.data=SMPL.data.filter(d=>d.classId!==id);
+  CLS.classes=CLS.classes.filter(c=>c.id!==id);
+  if (CLS.activeId===id) {
+    CLS.activeId=CLS.classes.length?CLS.classes[0].id:null;
+    if (!CLS.activeId&&CLS.addMode) { CLS.addMode=false; updateAddModeUI(); }
+  }
+  SMPL.done=false;
+  updateKDefault();
+  renderClassList();
+  updateSamplingUI();
+}
+
+// Delete a single point by its unique ptId
+function deletePoint(ptId) {
+  const pt=SMPL.data.find(d=>d.ptId===ptId);
+  if(!pt) return;
+  try{S.map.removeLayer(pt.marker);}catch(e){}
+  SMPL.data=SMPL.data.filter(d=>d.ptId!==ptId);
+  SMPL.done=false;
+  renderClassList();
+  updateSamplingUI();
+}
+
+function toggleClassExpand(id) {
+  const cls=CLS.classes.find(c=>c.id===id);
+  if(cls) cls.expanded=!cls.expanded;
+  renderClassList();
+}
+
+function setActiveClass(id) {
+  CLS.activeId=id;
+  renderClassList();
+  updateAddModeUI();
+}
+
+function toggleAddMode() {
+  if (!CLS.activeId) return;
+  CLS.addMode=!CLS.addMode;
+  updateAddModeUI();
+}
+
+function updateAddModeUI() {
+  const btn=document.getElementById('btn-addpts');
+  const lbl=document.getElementById('add-pts-lbl');
+  const cls=CLS.classes.find(c=>c.id===CLS.activeId);
+  btn.disabled=!CLS.activeId;
+  if (CLS.addMode&&cls) {
+    btn.textContent='◼ Stop Adding';
+    btn.classList.add('on');
+    lbl.innerHTML=`Adding to: <span class="add-pts-active" style="color:${cls.color}">${esc(cls.name)}</span>`;
+    S.map.getContainer().style.cursor='crosshair';
+    document.getElementById('hint-bar').textContent='Click the map to place a training point';
+  } else {
+    btn.textContent='+ Add Points';
+    btn.classList.remove('on');
+    lbl.textContent=cls?`Selected: ${cls.name}`:'Select a class above to add points';
+    S.map.getContainer().style.cursor='';
+    document.getElementById('hint-bar').textContent='Select a class then click the map to add training points';
+  }
+}
+
+function renderClassList() {
+  const el=document.getElementById('cls-list');
+  const cnt=document.getElementById('cnt-cls');
+  cnt.textContent=CLS.classes.length;
+  cnt.className='sbadge '+(CLS.classes.length?'bok':'');
+  if (!CLS.classes.length) { el.innerHTML='<div class="empty">No classes yet</div>'; return; }
+
+  el.innerHTML=CLS.classes.map(cls=>{
+    const pts=SMPL.data.filter(d=>d.classId===cls.id);
+    const sampledCount=pts.filter(d=>d.values!==null).length;
+
+    // Per-point list (expanded)
+    const ptRows = cls.expanded ? `
+<div class="cls-pts-list">
+  ${pts.length===0 ? '<div style="font-size:10px;color:#4a5570;padding:4px 0">No points yet — click the map in Add Points mode</div>' :
+    pts.map(pt=>`
+  <div class="pt-item">
+    <span class="pt-coord">${pt.lat.toFixed(4)}, ${pt.lng.toFixed(4)}</span>
+    <span class="pt-sampled">${pt.values!==null?'✓':''}</span>
+    <button class="pt-del" onclick="deletePoint(${pt.ptId})" title="Delete this point">✕</button>
+  </div>`).join('')}
+</div>` : '';
+
+    return `
+<div class="cls-item ${CLS.activeId===cls.id?'active':''}" onclick="setActiveClass(${cls.id})">
+  <span class="cls-swatch" style="background:${cls.color}"></span>
+  <span class="cls-name" title="${esc(cls.name)}">${esc(cls.name)}</span>
+  <span class="cls-cnt">${pts.length}pt${pts.length!==1?'s':''}</span>
+  <input type="color" class="cls-colorpick" value="${cls.color}" title="Change color"
+    onclick="event.stopPropagation()"
+    oninput="updateClassColor(${cls.id},this.value)">
+  <button class="cls-expand" onclick="event.stopPropagation();toggleClassExpand(${cls.id})" title="${cls.expanded?'Collapse':'Expand'} points">${cls.expanded?'▴':'▾'}</button>
+  <button class="cls-del" onclick="event.stopPropagation();deleteClass(${cls.id})" title="Delete class">✕</button>
+</div>
+${ptRows}`;
+  }).join('');
+}
+
+function updateClassColor(classId, newColor) {
+  const cls=CLS.classes.find(c=>c.id===classId);
+  if (!cls) return;
+  cls.color=newColor;
+  SMPL.data.filter(d=>d.classId===classId).forEach(d=>d.marker?.setStyle({color:newColor,fillColor:newColor}));
+  renderClassList();
+  if (CLF.centroids) runClassification();
+}
+
+// ═══════════════════════════════════════════════════════════
+// MAP CLICK — add point
+// ═══════════════════════════════════════════════════════════
+function onMapClick(e) {
+  if (!CLS.addMode||!CLS.activeId) return;
+  const cls=CLS.classes.find(c=>c.id===CLS.activeId);
+  if (!cls) return;
+
+  const ptId=SMPL.nextPtId++;
+  const marker=L.circleMarker(e.latlng,{
+    pane: 'training-pts',
+    radius:6, weight:2, color:cls.color, fillColor:cls.color, fillOpacity:0.75,
+    interactive:true,
+  }).addTo(S.map);
+
+  marker.bindTooltip(`${cls.name}`,{permanent:false,direction:'top',className:'',offset:[0,-6]});
+  marker.on('contextmenu', ()=>deletePoint(ptId));
+
+  SMPL.data.push({ptId, lat:e.latlng.lat, lng:e.latlng.lng, classId:cls.id, values:null, marker});
+  SMPL.done=false;
+
+  renderClassList();
+  updateSamplingUI();
+}
+
+// ═══════════════════════════════════════════════════════════
+// TILE SELECTORS
+// ═══════════════════════════════════════════════════════════
+function updateTileSelectors() {
+  const selEl=document.getElementById('tile-sel-list');
+  if (!S.layers.length) { selEl.innerHTML='<div class="empty">Load embedding tiles first</div>'; }
+  else {
+    selEl.innerHTML=S.layers.map(l=>`
+<div class="tile-sel-item">
+  <input type="checkbox" id="tsel-${l.id}" checked>
+  <label class="tile-sel-lbl" for="tsel-${l.id}" title="${esc(l.name)}">${esc(l.name)}</label>
+</div>`).join('');
+  }
+
+  const opts='<option value="">— select tile —</option>'
+    +S.layers.filter(l=>l.status==='ok').map(l=>`<option value="${l.id}">${esc(l.name)}</option>`).join('');
+
+  // Supervised selector
+  const spvSel=document.getElementById('clf-tile-sel-spv');
+  const spvCur=spvSel.value||(CLF.lastTileIdSpv?String(CLF.lastTileIdSpv):'');
+  spvSel.innerHTML=opts;
+  if (spvCur&&S.layers.some(l=>String(l.id)===spvCur)){spvSel.value=spvCur;CLF.lastTileIdSpv=parseInt(spvCur)||null;}
+
+  // Unsupervised selector
+  const unspvSel=document.getElementById('clf-tile-sel-unspv');
+  const unspvCur=unspvSel.value||(CLF.lastTileIdUnspv?String(CLF.lastTileIdUnspv):'');
+  unspvSel.innerHTML=opts;
+  if (unspvCur&&S.layers.some(l=>String(l.id)===unspvCur)){unspvSel.value=unspvCur;CLF.lastTileIdUnspv=parseInt(unspvCur)||null;}
+
+  updateSamplingUI();
+}
+
+function updateSamplingUI() {
+  const totalPts=SMPL.data.length;
+  const hasTiles=S.layers.length>0;
+  document.getElementById('btn-sample').disabled=!(totalPts>0&&hasTiles&&!SMPL.running);
+
+  const sampledPts=SMPL.data.filter(d=>d.values!==null).length;
+  if (SMPL.done && sampledPts > 0) {
+    const byClass=CLS.classes.map(c=>{
+      const n=SMPL.data.filter(d=>d.classId===c.id&&d.values!==null).length;
+      return `<span style="color:${c.color}">${esc(c.name)}: ${n}</span>`;
+    }).join(' · ');
+    document.getElementById('smpl-status').innerHTML=`✓ ${sampledPts}/${totalPts} sampled · ${byClass}`;
+  } else if (totalPts===0) {
+    document.getElementById('smpl-status').textContent='Add class points and load a tile to sample';
+  } else {
+    document.getElementById('smpl-status').textContent=`${totalPts} point${totalPts!==1?'s':''} placed — click Run Sampling`;
+  }
+
+  // ── Supervised panel ──────────────────────────────────
+  const hasCentroids = CLF.centroids && CLF.centroids.size > 0;
+  const spvTile = !!document.getElementById('clf-tile-sel-spv').value;
+  const btnClf = document.getElementById('btn-classify');
+  btnClf.disabled = !(hasCentroids && spvTile && !CLF.running);
+  if (CLF.hasRun && hasCentroids && spvTile) {
+    btnClf.textContent = '↺ Rerun Classifier';
+  } else {
+    btnClf.textContent = '▶ Run Classifier';
+  }
+  document.getElementById('btn-export-spv').disabled = !CLF.lastCanvasSpv;
+  const spvLayer = getLayer(CLF.lastTileIdSpv);
+  document.getElementById('btn-export-emb-spv').disabled = !spvLayer?.currentRasters;
+
+  // ── Unsupervised panel ────────────────────────────────
+  const unspvTile = !!document.getElementById('clf-tile-sel-unspv').value;
+  document.getElementById('btn-cluster').disabled = !(unspvTile && !CLF.running);
+  document.getElementById('btn-export-unspv').disabled = !CLF.lastCanvasUnspv;
+  const unspvLayer = getLayer(CLF.lastTileIdUnspv);
+  document.getElementById('btn-export-emb-unspv').disabled = !unspvLayer?.currentRasters;
+}
+
+// ═══════════════════════════════════════════════════════════
+// SAMPLING — batch: one request per tile
+// ═══════════════════════════════════════════════════════════
+async function runSampling() {
+  if (SMPL.running) return;
+  SMPL.running = true;
+  document.getElementById('btn-sample').disabled = true;
+
+  const selectedIds = S.layers
+    .filter(l => document.getElementById(`tsel-${l.id}`)?.checked && l.status === 'ok')
+    .map(l => l.id);
+  if (!selectedIds.length) {
+    document.getElementById('smpl-status').textContent = '⚠ No ready tiles selected for sampling.';
+    SMPL.running = false; return;
+  }
+
+  SMPL.data.forEach(d => d.values = null);
+  document.getElementById('smpl-status').textContent = 'Grouping points by tile…';
+  await new Promise(r => requestAnimationFrame(r));
+
+  let covered = 0;
+  for (const lid of selectedIds) {
+    const layer = getLayer(lid);
+    if (!layer) continue;
+    const uncovered = SMPL.data.filter(d => d.values === null);
+    if (!uncovered.length) break;
+    const n = await batchSampleFromTile(layer, uncovered);
+    covered += n;
+    const total = SMPL.data.length;
+    document.getElementById('smpl-status').textContent =
+      `Sampled ${covered}/${total} points${total-covered > 0 ? ` (${total-covered} outside tile)` : ''}`;
+    await new Promise(r => requestAnimationFrame(r));
+  }
+
+  SMPL.done = true;
+  SMPL.running = false;
+  computeCentroids();
+  updateSamplingUI();
+}
+
+// One HTTP request for ALL points in a tile
+async function batchSampleFromTile(layer, pts) {
+  const { images, projDef, origin:[ox,oy], res:[rx,ry], fullW, fullH, numBands, nodata } = layer;
+
+  const inTile = [];
+  for (const pt of pts) {
+    try {
+      const { x, y } = fromWGS84(projDef, pt.lat, pt.lng);
+      const col = Math.floor((x - ox) / rx);
+      const row = Math.floor((y - oy) / ry);
+      if (col >= 0 && col < fullW && row >= 0 && row < fullH)
+        inTile.push({ pt, col, row });
+    } catch(e) {}
+  }
+  if (!inTile.length) return 0;
+
+  let colMin=Infinity, colMax=-Infinity, rowMin=Infinity, rowMax=-Infinity;
+  for (const { col, row } of inTile) {
+    if (col < colMin) colMin = col; if (col > colMax) colMax = col;
+    if (row < rowMin) rowMin = row; if (row > rowMax) rowMax = row;
+  }
+  colMin = Math.max(0, colMin); colMax = Math.min(fullW - 1, colMax);
+  rowMin = Math.max(0, rowMin); rowMax = Math.min(fullH - 1, rowMax);
+
+  const TARGET_DIM = 64;
+  const spanC = colMax - colMin + 1, spanR = rowMax - rowMin + 1;
+  const targetW = Math.round(TARGET_DIM * fullW / spanC);
+  const ovImg = pickOverview(images, Math.min(targetW, fullW));
+  const scale = fullW / ovImg.getWidth();
+
+  const ovColMin = Math.max(0, Math.floor(colMin / scale));
+  const ovColMax = Math.min(ovImg.getWidth(),  Math.ceil((colMax + 1) / scale));
+  const ovRowMin = Math.max(0, Math.floor(rowMin / scale));
+  const ovRowMax = Math.min(ovImg.getHeight(), Math.ceil((rowMax + 1) / scale));
+  const oW = Math.max(1, ovColMax - ovColMin);
+  const oH = Math.max(1, ovRowMax - ovRowMin);
+
+  const bands0 = Array.from({ length: numBands }, (_, i) => i);
+  const rasters = await ovImg.readRasters({
+    window: [ovColMin, ovRowMin, ovColMax, ovRowMax],
+    samples: bands0, width: oW, height: oH,
+    interleave: false, fillValue: 0,
+  });
+
+  let sampled = 0;
+  for (const { pt, col, row } of inTile) {
+    const ci = Math.min(oW - 1, Math.max(0, Math.round(col / scale - ovColMin)));
+    const ri = Math.min(oH - 1, Math.max(0, Math.round(row / scale - ovRowMin)));
+    const idx = ri * oW + ci;
+
+    if (nodata !== null && nodata !== undefined && rasters[0][idx] === nodata) continue;
+    if (nodata === null || nodata === undefined) {
+      let allZ = true;
+      for (let b = 0; b < numBands; b++) { if (rasters[b][idx] !== 0) { allZ = false; break; } }
+      if (allZ) continue;
+    }
+
+    const values = new Float32Array(numBands);
+    for (let b = 0; b < numBands; b++) values[b] = rasters[b][idx];
+    pt.values = values;
+    sampled++;
+  }
+  return sampled;
+}
+
+// ═══════════════════════════════════════════════════════════
+// CLASSIFIER — cosine similarity
+// Centroids are L2-normalised unit vectors; argmax dot = argmax cosine sim
+// ═══════════════════════════════════════════════════════════
+function computeCentroids() {
+  const sampled = SMPL.data.filter(d => d.values !== null);
+  if (!sampled.length) return;
+
+  const nDims = sampled[0].values.length;
+  CLF.centroids = new Map();
+
+  for (const cls of CLS.classes) {
+    const pts = sampled.filter(d => d.classId === cls.id);
+    if (!pts.length) continue;
+
+    const mean = new Float32Array(nDims);
+    for (const pt of pts) for (let b = 0; b < nDims; b++) mean[b] += pt.values[b];
+    for (let b = 0; b < nDims; b++) mean[b] /= pts.length;
+
+    // Raw (unnormalized) mean — used by Euclidean and Gaussian algorithms
+    const rawMean = new Float32Array(mean);
+
+    // Per-dimension variance — used by Gaussian log-likelihood classifier
+    const variance = new Float32Array(nDims).fill(1e-4);
+    if (pts.length > 1) {
+      for (const pt of pts) for (let b = 0; b < nDims; b++) {
+        const dv = pt.values[b] - rawMean[b];
+        variance[b] += dv * dv;
+      }
+      for (let b = 0; b < nDims; b++) variance[b] = Math.max(variance[b] / (pts.length - 1), 1e-6);
+    }
+    const logVar = new Float32Array(nDims);
+    for (let b = 0; b < nDims; b++) logVar[b] = Math.log(variance[b]);
+
+    // Normalise mean to unit vector so dot product = cosine similarity
+    let norm = 0;
+    for (let b = 0; b < nDims; b++) norm += mean[b] * mean[b];
+    norm = Math.sqrt(norm) || 1;
+    for (let b = 0; b < nDims; b++) mean[b] /= norm;
+
+    const [r2, g2, b2] = hexToRgb(cls.color);
+    CLF.centroids.set(cls.id, { mean, rawMean, variance, logVar, r:r2, g:g2, b:b2, name:cls.name });
+  }
+
+  document.getElementById('clf-status-spv').textContent =
+    `${CLF.centroids.size} centroid${CLF.centroids.size !== 1 ? 's' : ''} ready — select a tile and run`;
+  updateSamplingUI();
+}
+
+async function runClassification() {
+  if (CLF.running) return;
+  const layerId=parseInt(document.getElementById('clf-tile-sel-spv').value);
+  const layer=getLayer(layerId);
+  if (!layer||!CLF.centroids||CLF.centroids.size===0) return;
+
+  CLF.running=true;
+  document.getElementById('btn-classify').disabled=true;
+  document.getElementById('clf-status-spv').textContent='Reading viewport bands…';
+
+  try {
+    await _doClassification(layer);
+    CLF.hasRun=true;
+  } catch(err) {
+    document.getElementById('clf-status-spv').textContent=`⚠ ${err.message.slice(0,80)}`;
+  }
+
+  CLF.running=false;
+  updateSamplingUI();
+}
+
+// ── Shared pixel classifier — picks best centroid by chosen algorithm ──
+function classifyPixel(rasters, idx, centList, nDims, algorithm) {
+  if (algorithm === 'euclidean') {
+    let minDist=Infinity, best=null;
+    for(const cent of centList){
+      let dist=0;
+      for(let b=0;b<nDims;b++){const dv=rasters[b][idx]-cent.rawMean[b]; dist+=dv*dv;}
+      if(dist<minDist){minDist=dist;best=cent;}
+    }
+    return best;
+  } else if (algorithm === 'gaussian') {
+    let maxLL=-Infinity, best=null;
+    for(const cent of centList){
+      let ll=0;
+      for(let b=0;b<nDims;b++){
+        const dv=rasters[b][idx]-cent.rawMean[b];
+        ll -= 0.5*(dv*dv/cent.variance[b]+cent.logVar[b]);
+      }
+      if(ll>maxLL){maxLL=ll;best=cent;}
+    }
+    return best;
+  } else {
+    // cosine (default): centroid is pre-normalised unit vector
+    let maxSim=-Infinity, best=null;
+    for(const cent of centList){
+      let dot=0;
+      for(let b=0;b<nDims;b++) dot+=rasters[b][idx]*cent.mean[b];
+      if(dot>maxSim){maxSim=dot;best=cent;}
+    }
+    return best;
+  }
+}
+
+// ── Mesh-warped classification for non-Mercator (LAEA/UTM) tiles ──
+// Projects each SCREEN pixel back to native CRS to find the right raster value,
+// then classifies it — fixing the shift that happens when the COG is in a
+// different projection from the display (Web Mercator).
+function meshClassifyCanvas(rasters, rW, rH, nMinX, nMaxY, nMaxX, nMinY,
+                            projDef, viewportBounds, outW, outH,
+                            centList, nDims, alpha, nodata, algorithm) {
+  const MESH=16, MW=MESH+1;
+  const west=viewportBounds.getWest(), east=viewportBounds.getEast();
+  const north=viewportBounds.getNorth(), south=viewportBounds.getSouth();
+  const dLng=east-west, dLat=north-south;
+  const rSpanX=nMaxX-nMinX, rSpanY=nMinY-nMaxY; // rSpanY is negative (y grows northward in LAEA)
+
+  // Build control point mesh: each point maps a screen (WGS84) coord to a raster pixel coord
+  const meshC=new Float32Array(MW*MW), meshR=new Float32Array(MW*MW);
+  for (let mj=0;mj<MW;mj++) {
+    const lat=north-(mj/MESH)*dLat;
+    for (let mi=0;mi<MW;mi++) {
+      const lng=west+(mi/MESH)*dLng;
+      try {
+        const [nx,ny]=proj4('WGS84',projDef,[lng,lat]);
+        meshC[mj*MW+mi]=(nx-nMinX)/rSpanX*rW;
+        meshR[mj*MW+mi]=(ny-nMaxY)/rSpanY*rH;
+      } catch(e) { meshC[mj*MW+mi]=-1; meshR[mj*MW+mi]=-1; }
+    }
+  }
+
+  const canvas=document.createElement('canvas');
+  canvas.width=outW; canvas.height=outH;
+  const ctx=canvas.getContext('2d');
+  const imgD=ctx.createImageData(outW,outH);
+  const d=imgD.data;
+
+  for (let py=0;py<outH;py++) {
+    const mj=py/outH*MESH,mj0=Math.min(Math.floor(mj),MESH-1),mj1=mj0+1,ty=mj-mj0,omty=1-ty;
+    for (let px=0;px<outW;px++) {
+      const mi=px/outW*MESH,mi0=Math.min(Math.floor(mi),MESH-1),mi1=mi0+1,tx=mi-mi0,omtx=1-tx;
+      const i00=mj0*MW+mi0,i01=mj0*MW+mi1,i10=mj1*MW+mi0,i11=mj1*MW+mi1;
+      const col=meshC[i00]*omtx*omty+meshC[i01]*tx*omty+meshC[i10]*omtx*ty+meshC[i11]*tx*ty;
+      const row=meshR[i00]*omtx*omty+meshR[i01]*tx*omty+meshR[i10]*omtx*ty+meshR[i11]*tx*ty;
+      const c=Math.round(col), r=Math.round(row);
+      if(c<0||c>=rW||r<0||r>=rH) continue;
+      const ri=r*rW+c;
+
+      if(nodata!==null&&nodata!==undefined&&rasters[0][ri]===nodata) continue;
+      if(nodata===null||nodata===undefined){
+        let allZ=true;
+        for(let b=0;b<nDims;b++){if(rasters[b][ri]!==0){allZ=false;break;}}
+        if(allZ) continue;
+      }
+
+      const best=classifyPixel(rasters,ri,centList,nDims,algorithm);
+      if(best){
+        const o=(py*outW+px)*4;
+        d[o]=best.r; d[o+1]=best.g; d[o+2]=best.b; d[o+3]=alpha;
+      }
+    }
+  }
+  ctx.putImageData(imgD,0,0);
+  return canvas;
+}
+
+async function _doClassification(layer) {
+  const {images,projDef,epsg,origin:[ox,oy],res:[rx,ry],fullW,fullH,numBands,nodata} = layer;
+  const mb=S.map.getBounds();
+  const needsWarp=epsg!==4326&&epsg!==3857;
+  const cogMinX=Math.min(ox,ox+fullW*rx),cogMaxX=Math.max(ox,ox+fullW*rx);
+  const cogMinY=Math.min(oy,oy+fullH*ry),cogMaxY=Math.max(oy,oy+fullH*ry);
+
+  let vMinX=Infinity,vMaxX=-Infinity,vMinY=Infinity,vMaxY=-Infinity;
+  for (const [la,ln] of [
+    [mb.getSouth(),mb.getWest()],[mb.getSouth(),mb.getEast()],
+    [mb.getNorth(),mb.getWest()],[mb.getNorth(),mb.getEast()],
+  ]) {
+    try { const{x,y}=fromWGS84(projDef,la,ln); if(x<vMinX)vMinX=x; if(x>vMaxX)vMaxX=x; if(y<vMinY)vMinY=y; if(y>vMaxY)vMaxY=y; } catch(e){}
+  }
+  const cMinX=Math.max(vMinX,cogMinX),cMaxX=Math.min(vMaxX,cogMaxX);
+  const cMinY=Math.max(vMinY,cogMinY),cMaxY=Math.min(vMaxY,cogMaxY);
+  if (cMinX>=cMaxX||cMinY>=cMaxY) {
+    document.getElementById('clf-status-spv').textContent='⚠ Tile not visible — pan or zoom to the tile.';
+    return;
+  }
+
+  const colMin=Math.max(0,Math.floor((cMinX-ox)/rx));
+  const colMax=Math.min(fullW,Math.ceil((cMaxX-ox)/rx));
+  const rowMin=Math.max(0,Math.floor((cMaxY-oy)/ry));
+  const rowMax=Math.min(fullH,Math.ceil((cMinY-oy)/ry));
+  if (colMin>=colMax||rowMin>=rowMax) return;
+
+  const msize = S.map.getSize();
+  const dpr = window.devicePixelRatio || 1;
+  const MAX = CFG.MAX_CLF_DIM;
+  const outW = Math.min(Math.round(msize.x * dpr), MAX);
+  const outH = Math.min(Math.round(msize.y * dpr), MAX);
+
+  const nativeCols=colMax-colMin, nativeRows=rowMax-rowMin;
+  const ovImg=pickOverview(images, Math.min(Math.round(outW*fullW/nativeCols), fullW));
+  const scale=fullW/ovImg.getWidth();
+  const ovColMin=Math.max(0,Math.floor(colMin/scale));
+  const ovColMax=Math.min(ovImg.getWidth(),Math.ceil(colMax/scale));
+  const ovRowMin=Math.max(0,Math.floor(rowMin/scale));
+  const ovRowMax=Math.min(ovImg.getHeight(),Math.ceil(rowMax/scale));
+
+  document.getElementById('clf-status-spv').textContent=`Reading all ${numBands} bands at ${outW}×${outH}…`;
+  const bands0=Array.from({length:numBands},(_,i)=>i);
+  let rasters;
+  try {
+    rasters=await ovImg.readRasters({
+      window:[ovColMin,ovRowMin,ovColMax,ovRowMax],
+      samples:bands0, width:outW, height:outH,
+      interleave:false, fillValue:0,
+    });
+  } catch(err) { throw new Error(`Read failed: ${err.message}`); }
+
+  document.getElementById('clf-status-spv').textContent=`Classifying ${outW}×${outH} pixels…`;
+  await new Promise(r=>setTimeout(r,10));
+
+  const centList=[...CLF.centroids.values()];
+  const nDims=numBands;
+  const alpha=Math.round(CLF.opacitySpv*255);
+  const algorithm=document.getElementById('clf-algo').value||'cosine';
+
+  // Native-CRS extent derived from the quantized col/row values — using these rather
+  // than the raw cMinX/cMaxX avoids sub-pixel rounding that causes the visible shift
+  // between the classification overlay and the underlying tile.
+  const nMinX=ox+colMin*rx, nMaxY=oy+rowMin*ry;   // top-left in native CRS
+  const nMaxX=ox+colMax*rx, nMinY=oy+rowMax*ry;   // bottom-right in native CRS
+
+  let canvas, bounds;
+  if (needsWarp) {
+    // LAEA/UTM tiles: mesh-warp each SCREEN pixel back to native CRS so the
+    // classification is spatially correct across the full viewport extent.
+    canvas = meshClassifyCanvas(rasters, outW, outH, nMinX, nMaxY, nMaxX, nMinY,
+                                projDef, mb, outW, outH,
+                                centList, nDims, alpha, nodata, algorithm);
+    bounds = mb;
+  } else {
+    // EPSG:3857 tiles: pixels map linearly to native coords, no warp needed.
+    // Bounds are back-computed from col/row to avoid sub-pixel placement shift.
+    const nPx=outW*outH;
+    canvas=document.createElement('canvas');
+    canvas.width=outW; canvas.height=outH;
+    const ctx2=canvas.getContext('2d');
+    const imgD=ctx2.createImageData(outW,outH);
+    const d=imgD.data;
+    for (let i=0;i<nPx;i++) {
+      if(nodata!==null&&nodata!==undefined&&rasters[0][i]===nodata) continue;
+      if(nodata===null||nodata===undefined){
+        let allZ=true;
+        for(let b=0;b<nDims;b++){if(rasters[b][i]!==0){allZ=false;break;}}
+        if(allZ) continue;
+      }
+      const best=classifyPixel(rasters,i,centList,nDims,algorithm);
+      if(best){const o=i*4;d[o]=best.r;d[o+1]=best.g;d[o+2]=best.b;d[o+3]=alpha;}
+    }
+    ctx2.putImageData(imgD,0,0);
+    const sw=toWGS84(projDef,nMinX,nMinY), ne=toWGS84(projDef,nMaxX,nMaxY);
+    bounds=L.latLngBounds([sw.lat,sw.lng],[ne.lat,ne.lng]);
+  }
+  CLF.lastCanvasSpv=canvas;
+
+  const url=canvas.toDataURL('image/png');
+  if (CLF.overlay) {
+    CLF.overlay.setUrl(url); CLF.overlay.setBounds(bounds);
+  } else {
+    CLF.overlay=L.imageOverlay(url,bounds,{pane:'clf-overlay',opacity:CLF.opacitySpv,interactive:false}).addTo(S.map);
+  }
+
+  const clsNames=centList.map(c=>`<span style="color:${hexStr(c.r,c.g,c.b)}">${esc(c.name)}</span>`).join(' · ');
+  document.getElementById('clf-status-spv').innerHTML=`✓ ${outW}×${outH}px · ${clsNames}`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// K-MEANS UNSUPERVISED CLUSTERING
+// Uses class count as K; seeds from supervised centroids if available
+// ═══════════════════════════════════════════════════════════
+async function runClustering() {
+  if (CLF.running) return;
+  const layerId = parseInt(document.getElementById('clf-tile-sel-unspv').value);
+  const layer = getLayer(layerId);
+  if (!layer) return;
+
+  CLF.running = true;
+  document.getElementById('btn-cluster').disabled = true;
+  document.getElementById('clf-status-unspv').textContent = 'Reading viewport for clustering…';
+  await new Promise(r => requestAnimationFrame(r));
+
+  try {
+    await _doKmeans(layer);
+  } catch(err) {
+    document.getElementById('clf-status-unspv').textContent = `⚠ ${err.message.slice(0,80)}`;
+  }
+  CLF.running = false;
+  updateSamplingUI();
+}
+
+async function _doKmeans(layer) {
+  const {images,projDef,epsg,origin:[ox,oy],res:[rx,ry],fullW,fullH,numBands,nodata} = layer;
+  const mb = S.map.getBounds();
+  const needsWarp = epsg!==4326&&epsg!==3857;
+  const cogMinX=Math.min(ox,ox+fullW*rx), cogMaxX=Math.max(ox,ox+fullW*rx);
+  const cogMinY=Math.min(oy,oy+fullH*ry), cogMaxY=Math.max(oy,oy+fullH*ry);
+
+  let vMinX=Infinity,vMaxX=-Infinity,vMinY=Infinity,vMaxY=-Infinity;
+  for (const [la,ln] of [
+    [mb.getSouth(),mb.getWest()],[mb.getSouth(),mb.getEast()],
+    [mb.getNorth(),mb.getWest()],[mb.getNorth(),mb.getEast()],
+  ]) {
+    try { const{x,y}=fromWGS84(projDef,la,ln); if(x<vMinX)vMinX=x; if(x>vMaxX)vMaxX=x; if(y<vMinY)vMinY=y; if(y>vMaxY)vMaxY=y; } catch(e){}
+  }
+  const cMinX=Math.max(vMinX,cogMinX), cMaxX=Math.min(vMaxX,cogMaxX);
+  const cMinY=Math.max(vMinY,cogMinY), cMaxY=Math.min(vMaxY,cogMaxY);
+  if (cMinX>=cMaxX||cMinY>=cMaxY) {
+    document.getElementById('clf-status-unspv').textContent='⚠ Tile not visible — pan/zoom to the tile.';
+    return;
+  }
+
+  const colMin=Math.max(0,Math.floor((cMinX-ox)/rx));
+  const colMax=Math.min(fullW,Math.ceil((cMaxX-ox)/rx));
+  const rowMin=Math.max(0,Math.floor((cMaxY-oy)/ry));
+  const rowMax=Math.min(fullH,Math.ceil((cMinY-oy)/ry));
+  if (colMin>=colMax||rowMin>=rowMax) return;
+
+  const msize=S.map.getSize(), dpr=window.devicePixelRatio||1;
+  const MAX=CFG.MAX_CLF_DIM;
+  const outW=Math.min(Math.round(msize.x*dpr),MAX);
+  const outH=Math.min(Math.round(msize.y*dpr),MAX);
+  const nativeCols=colMax-colMin, nativeRows=rowMax-rowMin;
+  const ovImg=pickOverview(images,Math.min(Math.round(outW*fullW/nativeCols),fullW));
+  const scale=fullW/ovImg.getWidth();
+  const ovColMin=Math.max(0,Math.floor(colMin/scale));
+  const ovColMax=Math.min(ovImg.getWidth(),Math.ceil(colMax/scale));
+  const ovRowMin=Math.max(0,Math.floor(rowMin/scale));
+  const ovRowMax=Math.min(ovImg.getHeight(),Math.ceil(rowMax/scale));
+
+  document.getElementById('clf-status-unspv').textContent=`Reading ${numBands} bands…`;
+  const bands0=Array.from({length:numBands},(_,i)=>i);
+  let rasters;
+  try {
+    rasters=await ovImg.readRasters({
+      window:[ovColMin,ovRowMin,ovColMax,ovRowMax],
+      samples:bands0,width:outW,height:outH,interleave:false,fillValue:0
+    });
+  } catch(err) { throw new Error(`Read failed: ${err.message}`); }
+
+  // Collect valid pixel indices
+  const validIdx=[];
+  const nPx=outW*outH;
+  for (let i=0;i<nPx;i++) {
+    if(nodata!==null&&nodata!==undefined&&rasters[0][i]===nodata) continue;
+    if(nodata===null||nodata===undefined){
+      let allZ=true;
+      for(let b=0;b<numBands;b++){if(rasters[b][i]!==0){allZ=false;break;}}
+      if(allZ) continue;
+    }
+    validIdx.push(i);
+  }
+  if (!validIdx.length) { document.getElementById('clf-status-unspv').textContent='⚠ No valid pixels.'; return; }
+
+  // Number of clusters: read from UI input (default to class count, min 2, max 20)
+  const kInput = parseInt(document.getElementById('kmeans-k').value);
+  const K = Math.min(20, Math.max(2, isNaN(kInput) ? (CLS.classes.length||3) : kInput));
+  const nDims = numBands;
+
+  document.getElementById('clf-status-unspv').textContent=`Running K-means (K=${K})…`;
+  await new Promise(r=>setTimeout(r,10));
+
+  // Initialise centroids: use supervised centroids if available, else random pixels
+  const centroids = [];
+  if (CLF.centroids && CLF.centroids.size >= K) {
+    for (const [,c] of CLF.centroids) {
+      centroids.push(new Float32Array(c.rawMean));
+      if (centroids.length >= K) break;
+    }
+  } else {
+    // K-means++ initialization: pick K spread-out seed pixels from valid set
+    const seedIdx = [validIdx[Math.floor(Math.random()*validIdx.length)]];
+    while (seedIdx.length < K) {
+      let maxD=-1, bestPx=seedIdx[0];
+      const sample = validIdx.filter((_,i)=>i%Math.max(1,Math.floor(validIdx.length/200))===0);
+      for (const idx of sample) {
+        let minD=Infinity;
+        for (const sIdx of seedIdx) {
+          let d=0;
+          for(let b=0;b<nDims;b++){const dv=rasters[b][idx]-rasters[b][sIdx]; d+=dv*dv;}
+          if(d<minD)minD=d;
+        }
+        if(minD>maxD){maxD=minD;bestPx=idx;}
+      }
+      seedIdx.push(bestPx);
+    }
+    for (const idx of seedIdx) {
+      const c=new Float32Array(nDims);
+      for(let b=0;b<nDims;b++) c[b]=rasters[b][idx];
+      centroids.push(c);
+    }
+  }
+
+  // K-means EM iterations
+  const assign = new Int32Array(nPx).fill(-1);
+  for (let iter=0; iter<25; iter++) {
+    // Assignment step
+    let changed=0;
+    for (const idx of validIdx) {
+      let minD=Infinity, best=0;
+      for (let k=0;k<K;k++) {
+        let d=0;
+        for(let b=0;b<nDims;b++){const dv=rasters[b][idx]-centroids[k][b]; d+=dv*dv;}
+        if(d<minD){minD=d;best=k;}
+      }
+      if(assign[idx]!==best){assign[idx]=best;changed++;}
+    }
+    if(changed===0&&iter>0) break;
+
+    // Update step — recompute centroids
+    const sums=Array.from({length:K},()=>new Float64Array(nDims));
+    const counts=new Int32Array(K);
+    for (const idx of validIdx) {
+      const k=assign[idx]; if(k<0) continue;
+      for(let b=0;b<nDims;b++) sums[k][b]+=rasters[b][idx];
+      counts[k]++;
+    }
+    for (let k=0;k<K;k++) {
+      if(counts[k]>0) for(let b=0;b<nDims;b++) centroids[k][b]=sums[k][b]/counts[k];
+    }
+  }
+
+  // Assign colors — match k-means centroids to user class colors by cosine similarity
+  const palette = CLS.classes.length>0
+    ? CLS.classes.map(c=>hexToRgb(c.color))
+    : CLASS_PALETTE.slice(0,K).map(h=>hexToRgb(h));
+
+  // Build centroid objects for rendering (using Euclidean assignment = raw centroid)
+  const kCents = centroids.map((c,k)=>{
+    const [r2,g2,b2]=palette[k%palette.length];
+    return {rawMean:c,r:r2,g:g2,b:b2,name:`Cluster ${k+1}`};
+  });
+
+  // Render output using mesh warp (for warped tiles) or linear (for 3857)
+  const alpha=Math.round(CLF.opacityUnspv*255);
+  const nMinX=ox+colMin*rx, nMaxY=oy+rowMin*ry;
+  const nMaxX=ox+colMax*rx, nMinY=oy+rowMax*ry;
+
+  let canvas, bounds;
+  if (needsWarp) {
+    // Use meshClassifyCanvas with euclidean algorithm
+    canvas=meshClassifyCanvas(rasters,outW,outH,nMinX,nMaxY,nMaxX,nMinY,
+                              projDef,mb,outW,outH,kCents,nDims,alpha,nodata,'euclidean');
+    bounds=mb;
+  } else {
+    canvas=document.createElement('canvas');
+    canvas.width=outW; canvas.height=outH;
+    const ctx2=canvas.getContext('2d');
+    const imgD=ctx2.createImageData(outW,outH);
+    const d=imgD.data;
+    for (let i=0;i<nPx;i++) {
+      if(assign[i]<0) continue;
+      const k=assign[i];
+      const o=i*4;
+      d[o]=kCents[k].r; d[o+1]=kCents[k].g; d[o+2]=kCents[k].b; d[o+3]=alpha;
+    }
+    ctx2.putImageData(imgD,0,0);
+    const sw=toWGS84(projDef,nMinX,nMinY), ne=toWGS84(projDef,nMaxX,nMaxY);
+    bounds=L.latLngBounds([sw.lat,sw.lng],[ne.lat,ne.lng]);
+  }
+  CLF.lastCanvasUnspv=canvas;
+
+  const url=canvas.toDataURL('image/png');
+  if (CLF.overlayCluster) {
+    CLF.overlayCluster.setUrl(url); CLF.overlayCluster.setBounds(bounds);
+  } else {
+    CLF.overlayCluster=L.imageOverlay(url,bounds,{pane:'clf-overlay',opacity:CLF.opacityUnspv,interactive:false}).addTo(S.map);
+  }
+  const clsStr=kCents.map(c=>`<span style="color:${hexStr(c.r,c.g,c.b)}">${c.name}</span>`).join(' · ');
+  document.getElementById('clf-status-unspv').innerHTML=`✓ K-means K=${K} · ${clsStr}`;
+}
+
+// Auto-reclassify silently on zoom/pan
+function scheduleClassification() {
+  if (!CLF.centroids || CLF.centroids.size === 0) return;
+  clearTimeout(CLF.scheduleTimer);
+  CLF.scheduleTimer = setTimeout(async () => {
+    const layerId = parseInt(document.getElementById('clf-tile-sel-spv').value);
+    const layer = getLayer(layerId);
+    if (!layer || CLF.running) return;
+    CLF.running = true;
+    try { await _doClassification(layer); }
+    catch(e) { /* silent */ }
+    CLF.running = false;
+    updateSamplingUI();
+  }, CFG.REFRESH_DELAY + 100);
+}
+
+// ═══════════════════════════════════════════════════════════
+// OPACITY + EXPORT
+// ═══════════════════════════════════════════════════════════
+function setClfOpacity(which, v) {
+  const val=parseFloat(v);
+  if (which==='spv') {
+    CLF.opacitySpv=val;
+    if (CLF.overlay) CLF.overlay.setOpacity(val);
+  } else {
+    CLF.opacityUnspv=val;
+    if (CLF.overlayCluster) CLF.overlayCluster.setOpacity(val);
+  }
+}
+
+function exportClassPNG() {
+  if (!CLF.lastCanvasSpv) return;
+  const link=document.createElement('a');
+  link.download=`worldcereal_classification_${new Date().toISOString().slice(0,16).replace(/[T:]/g,'-')}.png`;
+  link.href=CLF.lastCanvasSpv.toDataURL('image/png');
+  link.click();
+}
+
+function exportClusterPNG() {
+  if (!CLF.lastCanvasUnspv) return;
+  const link=document.createElement('a');
+  link.download=`worldcereal_kmeans_${new Date().toISOString().slice(0,16).replace(/[T:]/g,'-')}.png`;
+  link.href=CLF.lastCanvasUnspv.toDataURL('image/png');
+  link.click();
+}
+
+function exportEmbeddingsPNG(tileSelectId) {
+  const layerId=parseInt(document.getElementById(tileSelectId).value);
+  const layer=getLayer(layerId);
+  if (!layer?.currentRasters||!layer.stretches) { alert('Load and display a tile first.'); return; }
+  const [rR,rG,rB]=layer.currentRasters;
+  const w=layer.currentOutW, h=layer.currentOutH;
+  const url=rastersToDataURL(rR,rG,rB,w,h,layer.stretches[0],layer.stretches[1],layer.stretches[2],layer.nodata);
+  const link=document.createElement('a');
+  link.download=`worldcereal_embeddings_${new Date().toISOString().slice(0,16).replace(/[T:]/g,'-')}.png`;
+  link.href=url;
+  link.click();
+}
+
+// ── CSV import / export ───────────────────────────────────
+function exportCSV() {
+  if (!SMPL.data.length) { alert('No training points to export.'); return; }
+  const rows=['class_name,latitude,longitude'];
+  for (const pt of SMPL.data) {
+    const cls=CLS.classes.find(c=>c.id===pt.classId);
+    if (!cls) continue;
+    rows.push(`${cls.name},${pt.lat},${pt.lng}`);
+  }
+  const blob=new Blob([rows.join('\n')],{type:'text/csv'});
+  const link=document.createElement('a');
+  link.download=`worldcereal_training_${new Date().toISOString().slice(0,16).replace(/[T:]/g,'-')}.csv`;
+  link.href=URL.createObjectURL(blob);
+  link.click();
+}
+
+function importCSV() {
+  document.getElementById('csv-file-input').click();
+}
+
+function handleCSVFile(input) {
+  const file=input.files[0];
+  if (!file) return;
+  const reader=new FileReader();
+  reader.onload=(e)=>{ parseAndImportCSV(e.target.result); input.value=''; };
+  reader.readAsText(file);
+}
+
+function parseAndImportCSV(text) {
+  const lines=text.trim().split(/\r?\n/).filter(l=>l.trim());
+  if (!lines.length) { alert('Empty file.'); return; }
+
+  // Auto-detect separator
+  const first=lines[0];
+  const sep=first.includes('\t')?'\t':first.includes(';')?';':',';
+
+  const rows=lines.map(l=>l.split(sep).map(v=>v.trim().replace(/^["']|["']$/g,'')));
+
+  // Auto-detect header row
+  const headerKeywords=['class','label','name','lat','latitude','lon','lng','longitude','x','y'];
+  const hasHeader=rows[0].some(v=>headerKeywords.includes(v.toLowerCase()));
+
+  let classCol=0, latCol=1, lngCol=2;
+  if (hasHeader) {
+    const hdr=rows[0].map(v=>v.toLowerCase());
+    const ci=hdr.findIndex(v=>['class','label','name','class_name'].includes(v));
+    const li=hdr.findIndex(v=>['lat','latitude','y'].includes(v));
+    const lgi=hdr.findIndex(v=>['lon','lng','longitude','x'].includes(v));
+    if (ci>=0) classCol=ci;
+    if (li>=0) latCol=li;
+    if (lgi>=0) lngCol=lgi;
+  }
+
+  const dataRows=hasHeader?rows.slice(1):rows;
+  let added=0, skipped=0;
+  const boundsArr=[];
+
+  for (const row of dataRows) {
+    if (row.length<3) { skipped++; continue; }
+    const className=row[classCol];
+    const lat=parseFloat(row[latCol]);
+    const lng=parseFloat(row[lngCol]);
+    if (!className||isNaN(lat)||isNaN(lng)) { skipped++; continue; }
+    if (lat<-90||lat>90||lng<-180||lng>180) { skipped++; continue; }
+
+    // Find or create class
+    let cls=CLS.classes.find(c=>c.name===className);
+    if (!cls) {
+      const id=CLS.nextId++;
+      const color=CLASS_PALETTE[CLS.classes.length%CLASS_PALETTE.length];
+      cls={id, name:className, color, expanded:false};
+      CLS.classes.push(cls);
+      if (!CLS.activeId) CLS.activeId=id;
+    }
+
+    // Add marker + point
+    const ptId=SMPL.nextPtId++;
+    const latlng=L.latLng(lat,lng);
+    const marker=L.circleMarker(latlng,{
+      pane:'training-pts', radius:6, weight:2,
+      color:cls.color, fillColor:cls.color, fillOpacity:0.75, interactive:true,
+    }).addTo(S.map);
+    marker.bindTooltip(cls.name,{permanent:false,direction:'top',offset:[0,-6]});
+    marker.on('contextmenu',()=>deletePoint(ptId));
+    SMPL.data.push({ptId, lat, lng, classId:cls.id, values:null, marker});
+    boundsArr.push(latlng);
+    added++;
+  }
+
+  SMPL.done=false;
+  if (boundsArr.length) S.map.fitBounds(L.latLngBounds(boundsArr),{padding:[40,40]});
+  updateKDefault();
+  renderClassList();
+  updateSamplingUI();
+  alert(`Imported ${added} point${added!==1?'s':''}.${skipped?` (${skipped} skipped — invalid rows)`:''}`);
+}
+
+function updateKDefault() {
+  const k=Math.min(20,Math.max(2,CLS.classes.length||3));
+  const el=document.getElementById('kmeans-k');
+  if (el) el.value=k;
+}
+
+// ═══════════════════════════════════════════════════════════
+// UTILITIES
+// ═══════════════════════════════════════════════════════════
+function esc(s){ return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function hexToRgb(hex) {
+  const h=hex.replace('#','');
+  return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)];
+}
+function hexStr(r,g,b){ return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`; }
+
+// ── Left sidebar resize ───────────────────────────────────
+function initSidebarResize() {
+  const handle=document.getElementById('sb-handle'),sb=document.getElementById('sb');
+  let drag=false,startX=0,startW=0;
+  handle.addEventListener('mousedown',e=>{drag=true;startX=e.clientX;startW=sb.offsetWidth;handle.classList.add('dragging');document.body.style.cursor='col-resize';document.body.style.userSelect='none';e.preventDefault();});
+  document.addEventListener('mousemove',e=>{if(!drag)return;sb.style.width=Math.max(200,Math.min(520,startW+(e.clientX-startX)))+'px';});
+  document.addEventListener('mouseup',()=>{if(!drag)return;drag=false;handle.classList.remove('dragging');document.body.style.cursor='';document.body.style.userSelect='';});
+}
+
+// ── Right panel resize (handle is on left of panel; drag left = wider) ──
+function initRightPanelResize() {
+  const handle=document.getElementById('cp-handle'),cp=document.getElementById('cp');
+  let drag=false,startX=0,startW=0;
+  handle.addEventListener('mousedown',e=>{drag=true;startX=e.clientX;startW=cp.offsetWidth;handle.classList.add('dragging');document.body.style.cursor='col-resize';document.body.style.userSelect='none';e.preventDefault();});
+  document.addEventListener('mousemove',e=>{if(!drag)return;const newW=Math.max(200,Math.min(500,startW-(e.clientX-startX)));cp.style.width=newW+'px';});
+  document.addEventListener('mouseup',()=>{if(!drag)return;drag=false;handle.classList.remove('dragging');document.body.style.cursor='';document.body.style.userSelect='';});
+}
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+function init() {
+  initMap();
+  initSidebarResize();
+  initRightPanelResize();
+  document.getElementById('new-cls-color').value=CLASS_PALETTE[0];
+}
+
+init();
+</script>
+</body>
+</html>

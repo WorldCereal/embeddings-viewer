@@ -28,6 +28,16 @@ body {
 #hdr .sub{ font-size: 11px; color: #7a86a0; }
 #hdr .hint{ font-size:11px; color:#4a6; background:#132415;
   padding:3px 9px; border-radius:4px; border:1px solid #254428; }
+.wc-logo-link { display:flex; align-items:center; flex-shrink:0; }
+.wc-logo { height:26px; width:auto; }
+.hdr-nav { display:flex; gap:4px; flex-shrink:0; }
+.nav-pill {
+  font-size:11px; font-weight:600; padding:3px 11px; border-radius:4px;
+  border:1px solid #252840; color:#8892aa; background:#1e2136;
+  text-decoration:none; cursor:pointer; white-space:nowrap; transition:all .15s;
+}
+.nav-pill:hover { border-color:#3a7bd5; color:#7eb8f7; }
+.nav-pill.active { background:#1b2f50; border-color:#3a7bd5; color:#7eb8f7; cursor:default; }
 
 /* Explore 3D button — lives in the header bar */
 .tbtn-explore {
@@ -345,8 +355,15 @@ input.sp-colorpick { width: 28px; height: 22px; border: none; border-radius: 3px
 <body>
 
 <div id="hdr">
+  <a href="https://worldcereal.github.io" target="_blank" class="wc-logo-link" title="WorldCereal Project">
+    <img src="worldcereal_logo.jpg" alt="WorldCereal" class="wc-logo" onerror="this.style.display='none'">
+  </a>
   <h1>🛰 WorldCereal COG Viewer</h1>
   <span class="sub">Multi-layer • Viewport-adaptive • 1–99% stretch</span>
+  <nav class="hdr-nav">
+    <span class="nav-pill active">🗺 Viewer</span>
+    <a href="classify.html" class="nav-pill" target="_blank">🔬 Classify</a>
+  </nav>
   <button class="tbtn-explore" id="btn-explore"
     data-tip="Load an embedding tile from STAC, then click and drag a rectangle over it"
     onclick="toggleExplore()">⬡ Explore 3D</button>
@@ -742,12 +759,14 @@ function meshWarpToCanvas(rasters, rW, rH,
 // ═══════════════════════════════════════════════════════════
 // PERCENTILE STRETCH
 // ═══════════════════════════════════════════════════════════
-function computePercentile(arr, pLo, pHi) {
+function computePercentile(arr, pLo, pHi, nodata) {
   const step = Math.max(1, Math.floor(arr.length / 100000));
   const vals = [];
   for (let i = 0; i < arr.length; i += step) {
     const v = arr[i];
     if (!isFinite(v) || isNaN(v) || v === 0) continue;
+    // ↓↓ Skip nodata value (e.g. 255 for sea/background pixels) ↓↓
+    if (nodata !== null && nodata !== undefined && v === nodata) continue;
     vals.push(v);
   }
   if (!vals.length) return { min: 0, max: 1 };
@@ -850,7 +869,7 @@ async function loadCOG(layerId) {
   let stretches;
   if (layer.isRef) {
     // Reference tile — compute and publish shared stretch
-    stretches = [0,1,2].map(i => computePercentile(Array.from(rasters[i]), CFG.STRETCH_LO, CFG.STRETCH_HI));
+    stretches = [0,1,2].map(i => computePercentile(Array.from(rasters[i]), CFG.STRETCH_LO, CFG.STRETCH_HI, nodata));
     S.refStretch = stretches;
     S.refLayerId = layerId;
   } else if (!layer.useOwnStretch && (layer.type === 'embed' || layer.numBands > 3) && S.refStretch) {
@@ -858,7 +877,7 @@ async function loadCOG(layerId) {
     stretches = S.refStretch;
   } else {
     // Own per-layer stretch — user changed bands or explicitly requested recompute
-    stretches = [0,1,2].map(i => computePercentile(Array.from(rasters[i]), CFG.STRETCH_LO, CFG.STRETCH_HI));
+    stretches = [0,1,2].map(i => computePercentile(Array.from(rasters[i]), CFG.STRETCH_LO, CFG.STRETCH_HI, nodata));
   }
 
   setStatus(layerId, 'load', 'Rendering…');
@@ -1057,7 +1076,7 @@ function restretchLayer(id) {
   const l = getLayer(id);
   if (!l?.currentRasters) return;
   const stretches = [0,1,2].map(i =>
-    computePercentile(Array.from(l.currentRasters[i]), CFG.STRETCH_LO, CFG.STRETCH_HI)
+    computePercentile(Array.from(l.currentRasters[i]), CFG.STRETCH_LO, CFG.STRETCH_HI, l.nodata)
   );
   updateLayer(id, { stretches, useOwnStretch: true });
   // If this IS the ref layer, also update the shared pool so future tiles inherit it
