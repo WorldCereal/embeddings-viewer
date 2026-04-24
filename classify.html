@@ -258,12 +258,45 @@ input.cls-colorpick { width:26px; height:26px; border:none; border-radius:3px; c
 }
 #cwarn code { background:#3a2500; padding:1px 4px; border-radius:3px; font-size:10px; }
 
+/* ── Export dropdown ─────────────────────────────────────── */
+.export-row { display:flex; gap:5px; margin-top:5px; align-items:center; }
+.export-row select { flex:1; background:#1e2136; border:1px solid #272b47; color:#d4d8e8; padding:4px 6px; border-radius:3px; font-size:10px; }
+.export-row .btn-export { flex-shrink:0; width:auto; padding:5px 11px; margin-bottom:0; font-size:11px; }
+.export-res-note { font-size:9px; color:#5a6480; margin-top:3px; line-height:1.4; }
+
+/* ── PCA floating window ──────────────────────────────────── */
+#pca-win { position:fixed; top:64px; right:310px; z-index:3000; background:#181a2a; border:1px solid #252840; border-radius:8px; width:380px; box-shadow:0 8px 32px #000d; display:none; }
+#pca-win-hd { padding:8px 12px; cursor:move; border-bottom:1px solid #1e2036; display:flex; align-items:center; justify-content:space-between; border-radius:8px 8px 0 0; }
+#pca-win-hd span { font-size:12px; font-weight:700; color:#a0b8e0; }
+#pca-win-hd button { background:none; border:none; color:#6a7490; cursor:pointer; font-size:15px; line-height:1; padding:0 2px; }
+#pca-win-hd button:hover { color:#c0392b; }
+#pca-legend { padding:8px 12px; border-top:1px solid #1e2036; display:flex; flex-wrap:wrap; gap:6px; min-height:28px; }
+.btn-pca { background:#1e182a; border:1px solid #5a3a7a; color:#c090f0; }
+.btn-pca:hover { background:#261e36; }
+.btn-pca:disabled { opacity:.4; cursor:not-allowed; }
+
+/* ── Custom COG form ─────────────────────────────────────── */
+.cog-form { display:flex; flex-direction:column; gap:5px; }
+.cog-form-row { display:flex; gap:5px; align-items:center; }
+.cog-url-inp { flex:1; background:#1e2136; border:1px solid #272b47; color:#d4d8e8; padding:5px 8px; border-radius:4px; font-size:11px; }
+.cog-url-inp:focus { outline:none; border-color:#3a7bd5; }
+
 /* ── Leaflet overrides ───────────────────────────────────── */
 .leaflet-control-zoom a { background:#181a2a !important; color:#7eb8f7 !important; border-color:#252840 !important; }
 .leaflet-control-layers { background:#181a2a !important; border-color:#252840 !important; }
 </style>
 </head>
 <body>
+
+<!-- ═══ PCA FLOATING WINDOW ══════════════════════════════════ -->
+<div id="pca-win">
+  <div id="pca-win-hd">
+    <span>◈ PCA — Training Points</span>
+    <button onclick="closePCAWindow()">✕</button>
+  </div>
+  <canvas id="pca-canvas" style="display:block;width:100%;"></canvas>
+  <div id="pca-legend"></div>
+</div>
 
 <!-- ═══ HEADER ═══════════════════════════════════════════════ -->
 <div id="hdr">
@@ -303,6 +336,23 @@ input.cls-colorpick { width:26px; height:26px; border:none; border-radius:3px; c
           <button class="bsm" id="stbtn" onclick="fetchSTAC()">Fetch</button>
         </div>
         <div class="stlist" id="stlist"><div class="empty">Click Fetch to load items</div></div>
+      </div>
+
+      <!-- Custom COG URL -->
+      <div class="sec">
+        <div class="sec-hd">Add Custom COG URL</div>
+        <div class="cog-form">
+          <input class="cog-url-inp" id="cog-url" type="text" placeholder="https://… (COG URL)"
+            onkeydown="if(event.key==='Enter') addCustomCOG()">
+          <div class="cog-form-row">
+            <label style="font-size:10px;color:#7a86a0;flex-shrink:0;">Type:</label>
+            <select id="cog-type" class="clf-tile-sel" style="flex:1">
+              <option value="embed">128-band embedding</option>
+              <option value="3band">3-band display</option>
+            </select>
+            <button class="bsm" onclick="addCustomCOG()">Add</button>
+          </div>
+        </div>
       </div>
 
       <!-- Embedding Layers below STAC -->
@@ -345,10 +395,16 @@ input.cls-colorpick { width:26px; height:26px; border:none; border-radius:3px; c
         <button class="btn-run btn-classify" id="btn-classify" onclick="runClassification()" disabled>
           ▶ Run Classifier
         </button>
-        <div class="btn-export-pair">
-          <button class="btn-run btn-export" id="btn-export-spv" onclick="exportClassPNG()" disabled>↓ Class PNG</button>
-          <button class="btn-run btn-export" id="btn-export-emb-spv" onclick="exportEmbeddingsPNG('clf-tile-sel-spv')" disabled>↓ Embed PNG</button>
+        <div class="export-row">
+          <select id="export-fmt-spv">
+            <option value="png">📷 Class PNG + Legend</option>
+            <option value="geotiff">🗺 GeoTIFF (class index)</option>
+            <option value="embed">🌐 Embedding PNG</option>
+            <option value="legend">🏷 Legend only</option>
+          </select>
+          <button class="btn-run btn-export" id="btn-export-spv" onclick="doExport('spv')" disabled>↓ Export</button>
         </div>
+        <div class="export-res-note" id="export-note-spv"></div>
       </div>
 
       <!-- ── Unsupervised subpanel ──────────────────────── -->
@@ -376,10 +432,16 @@ input.cls-colorpick { width:26px; height:26px; border:none; border-radius:3px; c
         <button class="btn-run btn-cluster" id="btn-cluster" onclick="runClustering()" disabled>
           🔀 Run K-means
         </button>
-        <div class="btn-export-pair">
-          <button class="btn-run btn-export" id="btn-export-unspv" onclick="exportClusterPNG()" disabled>↓ Cluster PNG</button>
-          <button class="btn-run btn-export" id="btn-export-emb-unspv" onclick="exportEmbeddingsPNG('clf-tile-sel-unspv')" disabled>↓ Embed PNG</button>
+        <div class="export-row">
+          <select id="export-fmt-unspv">
+            <option value="png">📷 Cluster PNG + Legend</option>
+            <option value="geotiff">🗺 GeoTIFF (cluster index)</option>
+            <option value="embed">🌐 Embedding PNG</option>
+            <option value="legend">🏷 Legend only</option>
+          </select>
+          <button class="btn-run btn-export" id="btn-export-unspv" onclick="doExport('unspv')" disabled>↓ Export</button>
         </div>
+        <div class="export-res-note" id="export-note-unspv"></div>
       </div>
 
     </div><!-- /sb-scroll -->
@@ -439,6 +501,9 @@ input.cls-colorpick { width:26px; height:26px; border:none; border-radius:3px; c
         <button class="btn-run btn-sample" id="btn-sample" onclick="runSampling()" disabled>
           ▶ Run Sampling
         </button>
+        <button class="btn-run btn-pca" id="btn-pca" onclick="showPCAWindow()" disabled style="margin-top:5px;">
+          ◈ Visualize Points PCA
+        </button>
       </div>
 
       <!-- CSV Import / Export -->
@@ -450,14 +515,15 @@ input.cls-colorpick { width:26px; height:26px; border:none; border-radius:3px; c
             <span class="help-icon">?</span>
             <div class="help-tooltip">
               <strong>Expected CSV format:</strong><br>
-              <code>class_name,latitude,longitude</code><br><br>
-              • First row can be a header (auto-detected)<br>
+              <code>class_name,latitude,longitude[,color]</code><br><br>
+              • Header row auto-detected<br>
               • Separator: comma, tab, or semicolon<br>
-              • Column names recognized: <code>class</code>, <code>label</code>, <code>lat</code>, <code>latitude</code>, <code>lon</code>, <code>longitude</code><br>
-              • New class names are created automatically<br><br>
+              • Recognized column names: <code>class</code>, <code>label</code>, <code>lat</code>, <code>latitude</code>, <code>lon</code>, <code>longitude</code>, <code>color</code><br>
+              • Optional <code>color</code> column: hex value like <code>#e63946</code> — restores class colors on re-import<br>
+              • New class names created automatically<br><br>
               <strong>Example:</strong><br>
-              <code>Wheat,51.234,-1.456</code><br>
-              <code>Forest,52.100,-0.800</code>
+              <code>Wheat,51.234,-1.456,#f4d03f</code><br>
+              <code>Forest,52.100,-0.800,#27ae60</code>
             </div>
           </div>
           <input type="file" id="csv-file-input" accept=".csv,.txt,.tsv" style="display:none" onchange="handleCSVFile(this)">
@@ -543,18 +609,31 @@ const SMPL = {
 
 // Classifier state
 const CLF = {
-  centroids:      null,   // Map<classId, {mean, rawMean, variance, logVar, r,g,b, name}>
-  overlay:        null,   // L.imageOverlay — supervised result
-  overlayCluster: null,   // L.imageOverlay — k-means result
-  opacitySpv:     0.75,
-  opacityUnspv:   0.75,
-  running:        false,
-  hasRun:         false,  // true after first successful supervised classification
-  lastTileIdSpv:  null,   // persists supervised tile selection
-  lastTileIdUnspv:null,   // persists unsupervised tile selection
-  scheduleTimer:  null,
-  lastCanvasSpv:  null,   // canvas from last supervised run
-  lastCanvasUnspv:null,   // canvas from last k-means run
+  centroids:        null,   // Map<classId, {mean, rawMean, variance, logVar, r,g,b, name}>
+  overlay:          null,   // L.imageOverlay — supervised result
+  overlayCluster:   null,   // L.imageOverlay — k-means result
+  opacitySpv:       0.75,
+  opacityUnspv:     0.75,
+  running:          false,
+  hasRun:           false,  // true after first successful supervised classification
+  lastTileIdSpv:    null,
+  lastTileIdUnspv:  null,
+  scheduleTimer:    null,
+  lastCanvasSpv:    null,   // canvas from last supervised run
+  lastCanvasUnspv:  null,   // canvas from last k-means run
+  // GeoTIFF / export metadata
+  lastAssignSpv:    null,   // Uint8Array: 0=nodata, 1..N=class index
+  lastAssignUnspv:  null,
+  lastBoundsSpv:    null,   // L.LatLngBounds
+  lastBoundsUnspv:  null,
+  lastWSpv:         0,      // output width
+  lastHSpv:         0,
+  lastWUnspv:       0,
+  lastHUnspv:       0,
+  lastCentListSpv:  null,   // [{r,g,b,name,_idx}] for legend/colormap
+  lastCentListUnspv:null,
+  lastScaleSpv:     1,      // native pixels / output pixels (>1 = overview)
+  lastScaleUnspv:   1,
 };
 
 // ═══════════════════════════════════════════════════════════
@@ -1240,16 +1319,19 @@ function updateSamplingUI() {
   } else {
     btnClf.textContent = '▶ Run Classifier';
   }
-  document.getElementById('btn-export-spv').disabled = !CLF.lastCanvasSpv;
+  // Export button for supervised: enable when there's a canvas OR a loaded tile (for embed export)
   const spvLayer = getLayer(CLF.lastTileIdSpv);
-  document.getElementById('btn-export-emb-spv').disabled = !spvLayer?.currentRasters;
+  document.getElementById('btn-export-spv').disabled = !(CLF.lastCanvasSpv || spvLayer?.currentRasters);
 
   // ── Unsupervised panel ────────────────────────────────
   const unspvTile = !!document.getElementById('clf-tile-sel-unspv').value;
   document.getElementById('btn-cluster').disabled = !(unspvTile && !CLF.running);
-  document.getElementById('btn-export-unspv').disabled = !CLF.lastCanvasUnspv;
   const unspvLayer = getLayer(CLF.lastTileIdUnspv);
-  document.getElementById('btn-export-emb-unspv').disabled = !unspvLayer?.currentRasters;
+  document.getElementById('btn-export-unspv').disabled = !(CLF.lastCanvasUnspv || unspvLayer?.currentRasters);
+
+  // ── PCA button: enable once sampling is done ──────────
+  const sampledAny = SMPL.data.some(d => d.values !== null);
+  document.getElementById('btn-pca').disabled = !sampledAny;
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1466,7 +1548,7 @@ function classifyPixel(rasters, idx, centList, nDims, algorithm) {
 // different projection from the display (Web Mercator).
 function meshClassifyCanvas(rasters, rW, rH, nMinX, nMaxY, nMaxX, nMinY,
                             projDef, viewportBounds, outW, outH,
-                            centList, nDims, alpha, nodata, algorithm) {
+                            centList, nDims, alpha, nodata, algorithm, assignOut) {
   const MESH=16, MW=MESH+1;
   const west=viewportBounds.getWest(), east=viewportBounds.getEast();
   const north=viewportBounds.getNorth(), south=viewportBounds.getSouth();
@@ -1515,6 +1597,7 @@ function meshClassifyCanvas(rasters, rW, rH, nMinX, nMaxY, nMaxX, nMinY,
       if(best){
         const o=(py*outW+px)*4;
         d[o]=best.r; d[o+1]=best.g; d[o+2]=best.b; d[o+3]=alpha;
+        if(assignOut) assignOut[py*outW+px] = best._idx || 0;
       }
     }
   }
@@ -1577,10 +1660,11 @@ async function _doClassification(layer) {
   document.getElementById('clf-status-spv').textContent=`Classifying ${outW}×${outH} pixels…`;
   await new Promise(r=>setTimeout(r,10));
 
-  const centList=[...CLF.centroids.values()];
+  const centList=[...CLF.centroids.values()].map((c,i)=>({...c, _idx:i+1}));
   const nDims=numBands;
   const alpha=Math.round(CLF.opacitySpv*255);
   const algorithm=document.getElementById('clf-algo').value||'cosine';
+  const assignArr=new Uint8Array(outW*outH);
 
   // Native-CRS extent derived from the quantized col/row values — using these rather
   // than the raw cMinX/cMaxX avoids sub-pixel rounding that causes the visible shift
@@ -1590,15 +1674,11 @@ async function _doClassification(layer) {
 
   let canvas, bounds;
   if (needsWarp) {
-    // LAEA/UTM tiles: mesh-warp each SCREEN pixel back to native CRS so the
-    // classification is spatially correct across the full viewport extent.
     canvas = meshClassifyCanvas(rasters, outW, outH, nMinX, nMaxY, nMaxX, nMinY,
                                 projDef, mb, outW, outH,
-                                centList, nDims, alpha, nodata, algorithm);
+                                centList, nDims, alpha, nodata, algorithm, assignArr);
     bounds = mb;
   } else {
-    // EPSG:3857 tiles: pixels map linearly to native coords, no warp needed.
-    // Bounds are back-computed from col/row to avoid sub-pixel placement shift.
     const nPx=outW*outH;
     canvas=document.createElement('canvas');
     canvas.width=outW; canvas.height=outH;
@@ -1613,13 +1693,22 @@ async function _doClassification(layer) {
         if(allZ) continue;
       }
       const best=classifyPixel(rasters,i,centList,nDims,algorithm);
-      if(best){const o=i*4;d[o]=best.r;d[o+1]=best.g;d[o+2]=best.b;d[o+3]=alpha;}
+      if(best){const o=i*4;d[o]=best.r;d[o+1]=best.g;d[o+2]=best.b;d[o+3]=alpha;assignArr[i]=best._idx||0;}
     }
     ctx2.putImageData(imgD,0,0);
     const sw=toWGS84(projDef,nMinX,nMinY), ne=toWGS84(projDef,nMaxX,nMaxY);
     bounds=L.latLngBounds([sw.lat,sw.lng],[ne.lat,ne.lng]);
   }
   CLF.lastCanvasSpv=canvas;
+  CLF.lastAssignSpv=assignArr;
+  CLF.lastBoundsSpv=bounds;
+  CLF.lastWSpv=outW; CLF.lastHSpv=outH;
+  CLF.lastCentListSpv=centList;
+  CLF.lastScaleSpv=nativeCols/outW;
+  // Update resolution note
+  const noteEl=document.getElementById('export-note-spv');
+  if(noteEl) noteEl.textContent=`${outW}×${outH}px from ${nativeCols}×${nativeRows} native pixels${nativeCols/outW>1.4?' — zoom in for more detail':''}`;
+
 
   const url=canvas.toDataURL('image/png');
   if (CLF.overlay) {
@@ -1795,19 +1884,19 @@ async function _doKmeans(layer) {
   // Build centroid objects for rendering (using Euclidean assignment = raw centroid)
   const kCents = centroids.map((c,k)=>{
     const [r2,g2,b2]=palette[k%palette.length];
-    return {rawMean:c,r:r2,g:g2,b:b2,name:`Cluster ${k+1}`};
+    return {rawMean:c,r:r2,g:g2,b:b2,name:`Cluster ${k+1}`,_idx:k+1};
   });
 
   // Render output using mesh warp (for warped tiles) or linear (for 3857)
   const alpha=Math.round(CLF.opacityUnspv*255);
   const nMinX=ox+colMin*rx, nMaxY=oy+rowMin*ry;
   const nMaxX=ox+colMax*rx, nMinY=oy+rowMax*ry;
+  const kAssignArr=new Uint8Array(outW*outH);
 
   let canvas, bounds;
   if (needsWarp) {
-    // Use meshClassifyCanvas with euclidean algorithm
     canvas=meshClassifyCanvas(rasters,outW,outH,nMinX,nMaxY,nMaxX,nMinY,
-                              projDef,mb,outW,outH,kCents,nDims,alpha,nodata,'euclidean');
+                              projDef,mb,outW,outH,kCents,nDims,alpha,nodata,'euclidean',kAssignArr);
     bounds=mb;
   } else {
     canvas=document.createElement('canvas');
@@ -1820,12 +1909,21 @@ async function _doKmeans(layer) {
       const k=assign[i];
       const o=i*4;
       d[o]=kCents[k].r; d[o+1]=kCents[k].g; d[o+2]=kCents[k].b; d[o+3]=alpha;
+      kAssignArr[i]=k+1; // 1-based cluster index
     }
     ctx2.putImageData(imgD,0,0);
     const sw=toWGS84(projDef,nMinX,nMinY), ne=toWGS84(projDef,nMaxX,nMaxY);
     bounds=L.latLngBounds([sw.lat,sw.lng],[ne.lat,ne.lng]);
   }
   CLF.lastCanvasUnspv=canvas;
+  CLF.lastAssignUnspv=kAssignArr;
+  CLF.lastBoundsUnspv=bounds;
+  CLF.lastWUnspv=outW; CLF.lastHUnspv=outH;
+  CLF.lastCentListUnspv=kCents;
+  CLF.lastScaleUnspv=nativeCols/outW;
+  const noteElU=document.getElementById('export-note-unspv');
+  if(noteElU) noteElU.textContent=`${outW}×${outH}px from ${nativeCols}×${nativeRows} native pixels${nativeCols/outW>1.4?' — zoom in for more detail':''}`;
+
 
   const url=canvas.toDataURL('image/png');
   if (CLF.overlayCluster) {
@@ -1867,23 +1965,31 @@ function setClfOpacity(which, v) {
   }
 }
 
-function exportClassPNG() {
-  if (!CLF.lastCanvasSpv) return;
-  const link=document.createElement('a');
-  link.download=`worldcereal_classification_${new Date().toISOString().slice(0,16).replace(/[T:]/g,'-')}.png`;
-  link.href=CLF.lastCanvasSpv.toDataURL('image/png');
-  link.click();
+// ── Unified export dispatcher ─────────────────────────────
+function doExport(which) {
+  const fmt=document.getElementById(`export-fmt-${which}`).value;
+  const ts=new Date().toISOString().slice(0,16).replace(/[T:]/g,'-');
+  if (fmt==='png') {
+    const canvas=which==='spv'?CLF.lastCanvasSpv:CLF.lastCanvasUnspv;
+    if (!canvas) { alert('Run classification first.'); return; }
+    const link=document.createElement('a');
+    link.download=`worldcereal_${which==='spv'?'classification':'kmeans'}_${ts}.png`;
+    link.href=canvas.toDataURL('image/png'); link.click();
+    exportLegendPNG(which, ts);
+  } else if (fmt==='geotiff') {
+    exportGeoTIFF(which, ts);
+  } else if (fmt==='embed') {
+    const selId=which==='spv'?'clf-tile-sel-spv':'clf-tile-sel-unspv';
+    exportEmbeddingsPNG(selId, ts);
+  } else if (fmt==='legend') {
+    exportLegendPNG(which, ts);
+  }
 }
 
-function exportClusterPNG() {
-  if (!CLF.lastCanvasUnspv) return;
-  const link=document.createElement('a');
-  link.download=`worldcereal_kmeans_${new Date().toISOString().slice(0,16).replace(/[T:]/g,'-')}.png`;
-  link.href=CLF.lastCanvasUnspv.toDataURL('image/png');
-  link.click();
-}
+function exportClassPNG() { doExport('spv'); }
+function exportClusterPNG() { doExport('unspv'); }
 
-function exportEmbeddingsPNG(tileSelectId) {
+function exportEmbeddingsPNG(tileSelectId, ts) {
   const layerId=parseInt(document.getElementById(tileSelectId).value);
   const layer=getLayer(layerId);
   if (!layer?.currentRasters||!layer.stretches) { alert('Load and display a tile first.'); return; }
@@ -1891,19 +1997,170 @@ function exportEmbeddingsPNG(tileSelectId) {
   const w=layer.currentOutW, h=layer.currentOutH;
   const url=rastersToDataURL(rR,rG,rB,w,h,layer.stretches[0],layer.stretches[1],layer.stretches[2],layer.nodata);
   const link=document.createElement('a');
-  link.download=`worldcereal_embeddings_${new Date().toISOString().slice(0,16).replace(/[T:]/g,'-')}.png`;
-  link.href=url;
-  link.click();
+  const t=ts||new Date().toISOString().slice(0,16).replace(/[T:]/g,'-');
+  link.download=`worldcereal_embeddings_${t}.png`;
+  link.href=url; link.click();
+}
+
+// ── Legend PNG ────────────────────────────────────────────
+function exportLegendPNG(which, ts) {
+  const centList=which==='spv'?CLF.lastCentListSpv:CLF.lastCentListUnspv;
+  if (!centList||!centList.length) return;
+  const canvas=drawLegendCanvas(centList);
+  const link=document.createElement('a');
+  const t=ts||new Date().toISOString().slice(0,16).replace(/[T:]/g,'-');
+  link.download=`worldcereal_legend_${which}_${t}.png`;
+  link.href=canvas.toDataURL('image/png'); link.click();
+}
+
+function drawLegendCanvas(centList) {
+  const PAD=12, SW=16, SH=16, GAP=8, FONT=13;
+  const canvas=document.createElement('canvas');
+  const ctx=canvas.getContext('2d');
+  ctx.font=`${FONT}px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif`;
+  // Measure text widths
+  const maxTw=centList.reduce((m,c)=>Math.max(m,ctx.measureText(c.name).width),0);
+  const W=PAD*2+SW+GAP+maxTw+PAD;
+  const H=PAD*2+centList.length*(SH+GAP)-GAP+PAD;
+  canvas.width=Math.ceil(W); canvas.height=Math.ceil(H);
+  // Background
+  ctx.fillStyle='#181a2a'; ctx.fillRect(0,0,canvas.width,canvas.height);
+  // Border
+  ctx.strokeStyle='#252840'; ctx.lineWidth=1;
+  ctx.strokeRect(0.5,0.5,canvas.width-1,canvas.height-1);
+  // Title
+  ctx.font=`bold 11px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif`;
+  ctx.fillStyle='#7a86a0';
+  ctx.fillText('Classes', PAD, PAD+9);
+  // Entries
+  ctx.font=`${FONT}px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif`;
+  centList.forEach((c, i) => {
+    const y=PAD+18+i*(SH+GAP);
+    ctx.fillStyle=`rgb(${c.r},${c.g},${c.b})`;
+    ctx.fillRect(PAD, y, SW, SH);
+    ctx.strokeStyle='#333';ctx.lineWidth=0.5;
+    ctx.strokeRect(PAD+0.5, y+0.5, SW-1, SH-1);
+    ctx.fillStyle='#d4d8e8';
+    ctx.fillText(c.name, PAD+SW+GAP, y+SH-3);
+  });
+  return canvas;
+}
+
+// ── GeoTIFF export ────────────────────────────────────────
+function exportGeoTIFF(which, ts) {
+  const assign=which==='spv'?CLF.lastAssignSpv:CLF.lastAssignUnspv;
+  const bounds=which==='spv'?CLF.lastBoundsSpv:CLF.lastBoundsUnspv;
+  const W=which==='spv'?CLF.lastWSpv:CLF.lastWUnspv;
+  const H=which==='spv'?CLF.lastHSpv:CLF.lastHUnspv;
+  const centList=which==='spv'?CLF.lastCentListSpv:CLF.lastCentListUnspv;
+  const scale=which==='spv'?CLF.lastScaleSpv:CLF.lastScaleUnspv;
+  if (!assign||!bounds) { alert('Run classification first.'); return; }
+  if (scale>1.5) {
+    const ok=confirm(`⚠ This is at overview level (approx ${scale.toFixed(1)}× downsampled).\nZoom in for pixel-level detail.\n\nExport anyway?`);
+    if (!ok) return;
+  }
+  const buf=buildGeoTIFF(W,H,assign,bounds,centList);
+  const blob=new Blob([buf],{type:'image/tiff'});
+  const t=ts||new Date().toISOString().slice(0,16).replace(/[T:]/g,'-');
+  const link=document.createElement('a');
+  link.download=`worldcereal_${which==='spv'?'classification':'kmeans'}_${t}.tif`;
+  link.href=URL.createObjectURL(blob); link.click();
+  // Always export legend alongside GeoTIFF
+  setTimeout(()=>exportLegendPNG(which,t), 300);
+}
+
+// ── GeoTIFF writer ────────────────────────────────────────
+function buildGeoTIFF(W, H, assign, boundsLLB, centList) {
+  const b={west:boundsLLB.getWest(),east:boundsLLB.getEast(),
+           north:boundsLLB.getNorth(),south:boundsLLB.getSouth()};
+  const pixW=(b.east-b.west)/W, pixH=(b.north-b.south)/H;
+
+  // Extra binary blobs
+  const pixScale = new Float64Array([pixW, pixH, 0.0]);
+  const tiepoint = new Float64Array([0, 0, 0, b.west, b.north, 0.0]);
+  const geoKeys  = new Uint16Array([1,1,0,3, 1024,0,1,2, 1025,0,1,1, 2048,0,1,4326]);
+
+  // ColorMap: 256 R, 256 G, 256 B (uint16, 0-65535)
+  const cmap = new Uint16Array(768);
+  if (centList) {
+    for (const c of centList) {
+      const i=c._idx; if(i>=1&&i<=255){
+        cmap[i]=(c.r*257); cmap[256+i]=(c.g*257); cmap[512+i]=(c.b*257);
+      }
+    }
+  }
+
+  // TIFF layout
+  const hdrSz=8, nTags=14, ifdSz=2+nTags*12+4;
+  let off=hdrSz+ifdSz;
+  const oPS=off; off+=pixScale.byteLength;  // 24
+  const oTP=off; off+=tiepoint.byteLength;  // 48
+  const oGK=off; off+=geoKeys.byteLength;   // 32
+  const oCM=off; off+=cmap.byteLength;      // 1536
+  if(off%4!==0)off+=4-off%4;               // 4-byte align
+  const oImg=off;
+  const imgSz=W*H;
+  const total=oImg+imgSz;
+
+  const buf=new ArrayBuffer(total);
+  const dv=new DataView(buf);
+  const u8=new Uint8Array(buf);
+  let p=0;
+  const w16=v=>{dv.setUint16(p,v,true);p+=2;};
+  const w32=v=>{dv.setUint32(p,v,true);p+=4;};
+  const te=(t,type,count,val)=>{w16(t);w16(type);w32(count);w32(val);};
+
+  // Header
+  p=0; w16(0x4949); w16(42); w32(hdrSz);
+  // IFD
+  p=hdrSz; w16(nTags);
+  te(256,4,1,W);           // ImageWidth
+  te(257,4,1,H);           // ImageLength
+  te(258,3,1,8);           // BitsPerSample=8
+  te(259,3,1,1);           // Compression=None
+  te(262,3,1,3);           // PhotometricInterp=Palette
+  te(273,4,1,oImg);        // StripOffsets
+  te(277,3,1,1);           // SamplesPerPixel=1
+  te(278,4,1,H);           // RowsPerStrip=H
+  te(279,4,1,imgSz);       // StripByteCounts
+  te(284,3,1,1);           // PlanarConfig=Chunky
+  te(320,3,768,oCM);       // ColorMap
+  te(33550,12,3,oPS);      // ModelPixelScaleTag
+  te(33922,12,6,oTP);      // ModelTiepointTag
+  te(34735,3,geoKeys.length,oGK); // GeoKeyDirectoryTag
+  w32(0); // next IFD=none
+  // Extra data
+  new Float64Array(buf,oPS,3).set(pixScale);
+  new Float64Array(buf,oTP,6).set(tiepoint);
+  new Uint16Array(buf,oGK,geoKeys.length).set(geoKeys);
+  new Uint16Array(buf,oCM,768).set(cmap);
+  // Image data
+  u8.set(assign,oImg);
+  return buf;
+}
+
+// ── Custom COG URL ────────────────────────────────────────
+function addCustomCOG() {
+  const url=document.getElementById('cog-url').value.trim();
+  if (!url) { alert('Please enter a COG URL.'); return; }
+  const type=document.getElementById('cog-type').value;
+  const name=url.split('/').pop().replace(/\?.*$/,'') || 'custom-cog';
+  const layer=mkLayer(name, url);
+  if (type==='3band') layer.bandIndices1=[1,2,3];
+  S.layers.push(layer);
+  renderLists(); renderSTAC();
+  loadCOG(layer.id);
+  document.getElementById('cog-url').value='';
 }
 
 // ── CSV import / export ───────────────────────────────────
 function exportCSV() {
   if (!SMPL.data.length) { alert('No training points to export.'); return; }
-  const rows=['class_name,latitude,longitude'];
+  const rows=['class_name,latitude,longitude,color'];
   for (const pt of SMPL.data) {
     const cls=CLS.classes.find(c=>c.id===pt.classId);
     if (!cls) continue;
-    rows.push(`${cls.name},${pt.lat},${pt.lng}`);
+    rows.push(`${cls.name},${pt.lat},${pt.lng},${cls.color}`);
   }
   const blob=new Blob([rows.join('\n')],{type:'text/csv'});
   const link=document.createElement('a');
@@ -1938,15 +2195,20 @@ function parseAndImportCSV(text) {
   const headerKeywords=['class','label','name','lat','latitude','lon','lng','longitude','x','y'];
   const hasHeader=rows[0].some(v=>headerKeywords.includes(v.toLowerCase()));
 
-  let classCol=0, latCol=1, lngCol=2;
+  let classCol=0, latCol=1, lngCol=2, colorCol=-1;
   if (hasHeader) {
     const hdr=rows[0].map(v=>v.toLowerCase());
     const ci=hdr.findIndex(v=>['class','label','name','class_name'].includes(v));
     const li=hdr.findIndex(v=>['lat','latitude','y'].includes(v));
     const lgi=hdr.findIndex(v=>['lon','lng','longitude','x'].includes(v));
+    const coli=hdr.findIndex(v=>['color','colour','hex'].includes(v));
     if (ci>=0) classCol=ci;
     if (li>=0) latCol=li;
     if (lgi>=0) lngCol=lgi;
+    if (coli>=0) colorCol=coli;
+  } else {
+    // Positional: if 4th column looks like a hex color, use it
+    if (rows[0]?.length>=4 && /^#[0-9a-fA-F]{3,6}$/.test(rows[0][3])) colorCol=3;
   }
 
   const dataRows=hasHeader?rows.slice(1):rows;
@@ -1960,15 +2222,23 @@ function parseAndImportCSV(text) {
     const lng=parseFloat(row[lngCol]);
     if (!className||isNaN(lat)||isNaN(lng)) { skipped++; continue; }
     if (lat<-90||lat>90||lng<-180||lng>180) { skipped++; continue; }
+    // Parse color if present
+    const csvColor=(colorCol>=0&&row[colorCol])?row[colorCol].trim():null;
+    const isValidHex=csvColor&&/^#[0-9a-fA-F]{3,6}$/.test(csvColor);
 
     // Find or create class
     let cls=CLS.classes.find(c=>c.name===className);
     if (!cls) {
       const id=CLS.nextId++;
-      const color=CLASS_PALETTE[CLS.classes.length%CLASS_PALETTE.length];
+      const color=isValidHex?csvColor:CLASS_PALETTE[CLS.classes.length%CLASS_PALETTE.length];
       cls={id, name:className, color, expanded:false};
       CLS.classes.push(cls);
       if (!CLS.activeId) CLS.activeId=id;
+    } else if (isValidHex && cls.color!==csvColor) {
+      // Update existing class color if CSV provides one
+      cls.color=csvColor;
+      SMPL.data.filter(d=>d.classId===cls.id).forEach(d=>
+        d.marker?.setStyle({color:csvColor,fillColor:csvColor}));
     }
 
     // Add marker + point
@@ -1998,6 +2268,116 @@ function updateKDefault() {
   const el=document.getElementById('kmeans-k');
   if (el) el.value=k;
 }
+
+// ═══════════════════════════════════════════════════════════
+// PCA VISUALIZATION
+// ═══════════════════════════════════════════════════════════
+function showPCAWindow() {
+  const pts=SMPL.data.filter(d=>d.values!==null);
+  if (!pts.length) { alert('Run sampling first to get embedding vectors.'); return; }
+  document.getElementById('pca-win').style.display='block';
+  renderPCACanvas(pts);
+}
+function closePCAWindow() {
+  document.getElementById('pca-win').style.display='none';
+}
+
+function computePCA2D(vecs) {
+  const N=vecs.length; if(N<2) return vecs.map(()=>[0,0]);
+  const D=vecs[0].length;
+  // Mean center
+  const mean=new Float64Array(D);
+  for(const v of vecs) for(let d=0;d<D;d++) mean[d]+=v[d]/N;
+  const X=vecs.map(v=>{const c=new Float64Array(D);for(let d=0;d<D;d++)c[d]=v[d]-mean[d];return c;});
+  // Power iteration: find top eigenvector of X^T X
+  function powerIter(X2,iters=40){
+    let v=new Float64Array(D);
+    for(let d=0;d<D;d++) v[d]=Math.random()-0.5;
+    let n=0; for(let d=0;d<D;d++) n+=v[d]*v[d]; n=Math.sqrt(n)||1;
+    for(let d=0;d<D;d++) v[d]/=n;
+    for(let it=0;it<iters;it++){
+      const w=new Float64Array(D);
+      for(const xi of X2){let dot=0;for(let d=0;d<D;d++)dot+=xi[d]*v[d];for(let d=0;d<D;d++)w[d]+=dot*xi[d];}
+      let n2=0;for(let d=0;d<D;d++)n2+=w[d]*w[d];n2=Math.sqrt(n2)||1;
+      for(let d=0;d<D;d++)v[d]=w[d]/n2;
+    }
+    return v;
+  }
+  const pc1=powerIter(X);
+  const proj1=X.map(xi=>{let dot=0;for(let d=0;d<D;d++)dot+=xi[d]*pc1[d];return dot;});
+  // Deflate and find PC2
+  const X2=X.map((xi,i)=>{const d2=new Float64Array(D);for(let d=0;d<D;d++)d2[d]=xi[d]-proj1[i]*pc1[d];return d2;});
+  const pc2=powerIter(X2);
+  const proj2=X.map(xi=>{let dot=0;for(let d=0;d<D;d++)dot+=xi[d]*pc2[d];return dot;});
+  return proj1.map((p1,i)=>[p1,proj2[i]]);
+}
+
+function renderPCACanvas(pts) {
+  const canvas=document.getElementById('pca-canvas');
+  const W=360, H=260, PAD=28, R=4.5;
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#10111a'; ctx.fillRect(0,0,W,H);
+
+  const coords=computePCA2D(pts.map(p=>p.values));
+  let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
+  for(const [x,y] of coords){if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;}
+  const spanX=maxX-minX||1, spanY=maxY-minY||1;
+  const scX=(W-2*PAD)/spanX, scY=(H-2*PAD)/spanY;
+  const cx=x=>PAD+(x-minX)*scX, cy=y=>H-PAD-(y-minY)*scY;
+
+  // Grid
+  ctx.strokeStyle='#1e2136'; ctx.lineWidth=1;
+  const x0=cx(0), y0=cy(0);
+  if(x0>=PAD&&x0<=W-PAD){ctx.beginPath();ctx.moveTo(x0,PAD);ctx.lineTo(x0,H-PAD);ctx.stroke();}
+  if(y0>=PAD&&y0<=H-PAD){ctx.beginPath();ctx.moveTo(PAD,y0);ctx.lineTo(W-PAD,y0);ctx.stroke();}
+
+  // Points
+  for(let i=0;i<pts.length;i++){
+    const cls=CLS.classes.find(c=>c.id===pts[i].classId);
+    const col=cls?cls.color:'#888';
+    ctx.fillStyle=col; ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.lineWidth=0.5;
+    ctx.beginPath(); ctx.arc(cx(coords[i][0]),cy(coords[i][1]),R,0,Math.PI*2);
+    ctx.fill(); ctx.stroke();
+  }
+
+  // Axis labels
+  ctx.fillStyle='#4a5570'; ctx.font='10px sans-serif'; ctx.textAlign='center';
+  ctx.fillText('PC1',W/2,H-4);
+  ctx.save(); ctx.translate(10,H/2); ctx.rotate(-Math.PI/2); ctx.fillText('PC2',0,0); ctx.restore();
+  ctx.textAlign='left';
+
+  // Legend
+  const usedCls=CLS.classes.filter(c=>pts.some(p=>p.classId===c.id));
+  document.getElementById('pca-legend').innerHTML=usedCls.map(c=>
+    `<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#c0cce0;">
+      <span style="width:10px;height:10px;border-radius:2px;background:${c.color};display:inline-block;flex-shrink:0;"></span>
+      ${esc(c.name)}</span>`
+  ).join('');
+}
+
+// Draggable PCA window
+(function(){
+  let drag=false,startX=0,startY=0,origX=0,origY=0;
+  document.addEventListener('DOMContentLoaded',()=>{
+    const hd=document.getElementById('pca-win-hd');
+    const win=document.getElementById('pca-win');
+    hd.addEventListener('mousedown',e=>{
+      drag=true; startX=e.clientX; startY=e.clientY;
+      const r=win.getBoundingClientRect();
+      origX=r.left; origY=r.top;
+      win.style.right='auto'; win.style.bottom='auto';
+      win.style.left=origX+'px'; win.style.top=origY+'px';
+      document.body.style.userSelect='none'; e.preventDefault();
+    });
+    document.addEventListener('mousemove',e=>{
+      if(!drag)return;
+      win.style.left=(origX+e.clientX-startX)+'px';
+      win.style.top=(origY+e.clientY-startY)+'px';
+    });
+    document.addEventListener('mouseup',()=>{drag=false;document.body.style.userSelect='';});
+  });
+})();
 
 // ═══════════════════════════════════════════════════════════
 // UTILITIES
@@ -2035,6 +2415,8 @@ function init() {
   initSidebarResize();
   initRightPanelResize();
   document.getElementById('new-cls-color').value=CLASS_PALETTE[0];
+  // Auto-populate STAC list on load
+  fetchSTAC();
 }
 
 init();
