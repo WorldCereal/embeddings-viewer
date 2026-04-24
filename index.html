@@ -22,17 +22,17 @@ body {
 /* Header */
 #hdr {
   background: #181a2a; border-bottom: 1px solid #252840;
-  padding: 7px 16px; display: flex; align-items: center; gap: 14px; flex-shrink: 0; z-index: 1100;
+  padding: 10px 18px; display: flex; align-items: center; gap: 14px; flex-shrink: 0; z-index: 1100;
 }
-#hdr h1  { font-size: 14px; font-weight: 700; color: #7eb8f7; }
-#hdr .sub{ font-size: 11px; color: #7a86a0; }
-#hdr .hint{ font-size:11px; color:#4a6; background:#132415;
-  padding:3px 9px; border-radius:4px; border:1px solid #254428; }
+#hdr h1  { font-size: 16px; font-weight: 700; color: #7eb8f7; }
+#hdr .sub{ font-size: 13px; color: #7a86a0; }
+#hdr .hint{ font-size:13px; color:#4a6; background:#132415;
+  padding:4px 11px; border-radius:4px; border:1px solid #254428; }
 .wc-logo-link { display:flex; align-items:center; flex-shrink:0; }
-.wc-logo { height:26px; width:auto; }
-.hdr-nav { display:flex; gap:4px; flex-shrink:0; }
+.wc-logo { height:30px; width:auto; }
+.hdr-nav { display:flex; gap:6px; flex-shrink:0; }
 .nav-pill {
-  font-size:11px; font-weight:600; padding:3px 11px; border-radius:4px;
+  font-size:13px; font-weight:600; padding:5px 14px; border-radius:4px;
   border:1px solid #252840; color:#8892aa; background:#1e2136;
   text-decoration:none; cursor:pointer; white-space:nowrap; transition:all .15s;
 }
@@ -146,6 +146,8 @@ body {
 .stmode b { color:#a0aac0; font-weight:600; }
 .bxs-ref { background:#1b2a1b; border-color:#254428; color:#4a9; }
 .bxs-ref:hover { background:#1f3322; border-color:#4a9; }
+.bxs-dl { background:#1a1a2e; border-color:#3a3a6b; color:#8898d8; text-decoration:none; }
+.bxs-dl:hover { background:#22224a; border-color:#5a5ac8; color:#a0b0f0; }
 
 .empty { font-size:11px; color:#6a7490; text-align:center; padding:10px 0; }
 
@@ -1205,6 +1207,9 @@ function renderGroup(cid, layers) {
         ${!l.isRef && S.refStretch && l.useOwnStretch ? `
         <button class="bxs bxs-ref" onclick="useRefStretch(${l.id})"
           title="Switch back to shared 30UXD reference stretch">← Use ref</button>` : ''}
+        ${l.type === 'embed' ? `
+        <a class="bxs bxs-dl" href="${esc(l.url)}" target="_blank" download
+          title="Download raw COG tile (128-band GeoTIFF)">⬇ COG</a>` : ''}
       </div>` : '';
     return `
 <div class="lcard ${cc}">

@@ -21,23 +21,23 @@ body {
 /* ── Header ─────────────────────────────────────────────── */
 #hdr {
   background: #181a2a; border-bottom: 1px solid #252840;
-  padding: 7px 16px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; z-index: 1100;
+  padding: 10px 18px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; z-index: 1100;
 }
 .wc-logo-link { display:flex; align-items:center; flex-shrink:0; }
-.wc-logo { height:26px; width:auto; }
-#hdr h1 { font-size: 14px; font-weight: 700; color: #7eb8f7; white-space:nowrap; }
-#hdr .sub { font-size: 11px; color: #7a86a0; }
-.hdr-nav { display:flex; gap:4px; flex-shrink:0; }
+.wc-logo { height:30px; width:auto; }
+#hdr h1 { font-size: 16px; font-weight: 700; color: #7eb8f7; white-space:nowrap; }
+#hdr .sub { font-size: 13px; color: #7a86a0; }
+.hdr-nav { display:flex; gap:6px; flex-shrink:0; }
 .nav-pill {
-  font-size:11px; font-weight:600; padding:3px 11px; border-radius:4px;
+  font-size:13px; font-weight:600; padding:5px 14px; border-radius:4px;
   border:1px solid #252840; color:#8892aa; background:#1e2136;
   text-decoration:none; cursor:pointer; white-space:nowrap; transition:all .15s;
 }
 .nav-pill:hover { border-color:#3a7bd5; color:#7eb8f7; }
 .nav-pill.active { background:#1b2f50; border-color:#3a7bd5; color:#7eb8f7; cursor:default; }
 #hint-bar {
-  margin-left:auto; font-size:11px; color:#4a6; background:#132415;
-  padding:3px 9px; border-radius:4px; border:1px solid #254428; white-space:nowrap;
+  margin-left:auto; font-size:13px; color:#4a6; background:#132415;
+  padding:4px 11px; border-radius:4px; border:1px solid #254428; white-space:nowrap;
 }
 
 /* ── Layout ──────────────────────────────────────────────── */
@@ -78,9 +78,9 @@ body {
 
 /* ── Step labels ─────────────────────────────────────────── */
 .step-label {
-  font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.9px;
-  color:#3a7bd5; background:#111422; border:1px solid #1e2a46;
-  padding:4px 8px; border-radius:4px; margin-bottom:10px; margin-top:2px;
+  font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.7px;
+  color:#5a9be8; background:#111422; border:1px solid #1e2a46;
+  padding:5px 10px; border-radius:4px; margin-bottom:10px; margin-top:4px;
 }
 
 /* ── Sections ────────────────────────────────────────────── */
@@ -291,7 +291,7 @@ input.cls-colorpick { width:26px; height:26px; border:none; border-radius:3px; c
 <!-- ═══ PCA FLOATING WINDOW ══════════════════════════════════ -->
 <div id="pca-win">
   <div id="pca-win-hd">
-    <span>◈ PCA — Training Points</span>
+    <span>◈ PCA 3D — Training Points</span>
     <button onclick="closePCAWindow()">✕</button>
   </div>
   <canvas id="pca-canvas" style="display:block;width:100%;"></canvas>
@@ -460,8 +460,31 @@ input.cls-colorpick { width:26px; height:26px; border:none; border-radius:3px; c
   <div id="cp">
     <div id="cp-scroll">
 
-      <!-- ── STEP 2 ──────────────────────────────────────── -->
-      <div class="step-label">Step 2 · Add Class Samples</div>
+      <!-- ── STEP 2A ─────────────────────────────────────── -->
+      <div class="step-label">Step 2A · Add Class Samples</div>
+
+      <!-- CSV Import / Export — above Classes for quick access -->
+      <div class="sec" style="margin-bottom:8px;">
+        <div class="csv-row" style="margin-bottom:4px;">
+          <button class="btn-csv" onclick="importCSV()">⬆ Import CSV</button>
+          <button class="btn-csv btn-csv-export" onclick="exportCSV()" style="margin-left:2px;">⬇ Export CSV</button>
+          <div class="help-wrap" style="margin-left:4px;">
+            <span class="help-icon">?</span>
+            <div class="help-tooltip">
+              <strong>Expected CSV format:</strong><br>
+              <code>class_name,latitude,longitude[,color]</code><br><br>
+              • Header row auto-detected<br>
+              • Separator: comma, tab, or semicolon<br>
+              • Recognized names: <code>class</code>, <code>label</code>, <code>lat</code>, <code>latitude</code>, <code>lon</code>, <code>longitude</code>, <code>color</code><br>
+              • Optional <code>color</code> column: hex like <code>#e63946</code> — restores class colors on re-import<br><br>
+              <strong>Example:</strong><br>
+              <code>Wheat,51.234,-1.456,#f4d03f</code><br>
+              <code>Forest,52.100,-0.800,#27ae60</code>
+            </div>
+          </div>
+          <input type="file" id="csv-file-input" accept=".csv,.txt,.tsv" style="display:none" onchange="handleCSVFile(this)">
+        </div>
+      </div>
 
       <!-- Classes -->
       <div class="sec">
@@ -488,9 +511,30 @@ input.cls-colorpick { width:26px; height:26px; border:none; border-radius:3px; c
         </div>
       </div>
 
+      <!-- ── STEP 2B ─────────────────────────────────────── -->
+      <div class="step-label" style="margin-top:12px;">Step 2B · Sample Training Points</div>
+
+      <!-- Sampled-points CSV (with embedding vectors) -->
+      <div class="sec" style="margin-bottom:8px;">
+        <div class="csv-row">
+          <button class="btn-csv" onclick="importSampledCSV()" title="Import CSV with embedding vectors (class_name, lat, lon, color, emb_1…emb_N)">⬆ Import Sampled CSV</button>
+          <button class="btn-csv btn-csv-export" id="btn-export-sampled-csv" onclick="exportSampledCSV()" disabled title="Export sampled points including all 128 embedding values">⬇ Export Sampled CSV</button>
+          <div class="help-wrap" style="margin-left:4px;">
+            <span class="help-icon">?</span>
+            <div class="help-tooltip">
+              <strong>Sampled Points CSV (with embeddings):</strong><br>
+              <code>class_name,latitude,longitude,color,emb_1,emb_2,…,emb_128</code><br><br>
+              • Export saves every sampled point with its full embedding vector<br>
+              • Re-importing restores classes, colors, map markers <em>and</em> embedding values — no need to re-run sampling<br>
+              • Add new points on the map, then use <em>Run Sampling (new only)</em> to append their vectors before exporting again
+            </div>
+          </div>
+          <input type="file" id="sampled-csv-file-input" accept=".csv,.txt,.tsv" style="display:none" onchange="handleSampledCSVFile(this)">
+        </div>
+      </div>
+
       <!-- Sample Training Points -->
       <div class="sec">
-        <div class="sec-hd">Sample Training Points</div>
         <div style="font-size:10px;color:#7a86a0;margin-bottom:6px;">
           Select tiles to sample from (point must fall within tile extent):
         </div>
@@ -498,40 +542,22 @@ input.cls-colorpick { width:26px; height:26px; border:none; border-radius:3px; c
           <div class="empty">Load embedding tiles first</div>
         </div>
         <div class="smpl-status" id="smpl-status">Add class points and load a tile to sample</div>
+        <!-- "New points only" toggle — shown when there are already sampled points -->
+        <div id="sample-mode-row" style="display:none;margin:5px 0 3px;">
+          <label style="font-size:10px;color:#8892aa;display:flex;align-items:center;gap:5px;cursor:pointer;">
+            <input type="checkbox" id="chk-sample-new-only" style="margin:0;">
+            Sample new points only (keep existing embeddings)
+          </label>
+        </div>
         <button class="btn-run btn-sample" id="btn-sample" onclick="runSampling()" disabled>
           ▶ Run Sampling
         </button>
         <button class="btn-run btn-pca" id="btn-pca" onclick="showPCAWindow()" disabled style="margin-top:5px;">
           ◈ Visualize Points PCA
         </button>
-      </div>
-
-      <!-- CSV Import / Export -->
-      <div class="sec">
-        <div class="sec-hd">Import / Export Points</div>
-        <div class="csv-row">
-          <button class="btn-csv" onclick="importCSV()">⬆ Import CSV</button>
-          <div class="help-wrap">
-            <span class="help-icon">?</span>
-            <div class="help-tooltip">
-              <strong>Expected CSV format:</strong><br>
-              <code>class_name,latitude,longitude[,color]</code><br><br>
-              • Header row auto-detected<br>
-              • Separator: comma, tab, or semicolon<br>
-              • Recognized column names: <code>class</code>, <code>label</code>, <code>lat</code>, <code>latitude</code>, <code>lon</code>, <code>longitude</code>, <code>color</code><br>
-              • Optional <code>color</code> column: hex value like <code>#e63946</code> — restores class colors on re-import<br>
-              • New class names created automatically<br><br>
-              <strong>Example:</strong><br>
-              <code>Wheat,51.234,-1.456,#f4d03f</code><br>
-              <code>Forest,52.100,-0.800,#27ae60</code>
-            </div>
-          </div>
-          <input type="file" id="csv-file-input" accept=".csv,.txt,.tsv" style="display:none" onchange="handleCSVFile(this)">
-        </div>
-        <div class="csv-row">
-          <button class="btn-csv btn-csv-export" onclick="exportCSV()">⬇ Export CSV</button>
-          <span style="font-size:10px;color:#5a6480;">Save all points in reimportable format</span>
-        </div>
+        <button class="btn-run btn-sample" id="btn-export-sampled-csv2" onclick="exportSampledCSV()" disabled style="margin-top:5px;background:#1a2b1a;border-color:#2d6b2d;color:#6abf6a;">
+          ⬇ Export Sampled Points CSV
+        </button>
       </div>
 
     </div><!-- /cp-scroll -->
@@ -1329,9 +1355,16 @@ function updateSamplingUI() {
   const unspvLayer = getLayer(CLF.lastTileIdUnspv);
   document.getElementById('btn-export-unspv').disabled = !(CLF.lastCanvasUnspv || unspvLayer?.currentRasters);
 
-  // ── PCA button: enable once sampling is done ──────────
+  // ── PCA + export-sampled buttons: enable once sampling is done ──────────
   const sampledAny = SMPL.data.some(d => d.values !== null);
   document.getElementById('btn-pca').disabled = !sampledAny;
+  document.getElementById('btn-export-sampled-csv').disabled  = !sampledAny;
+  document.getElementById('btn-export-sampled-csv2').disabled = !sampledAny;
+
+  // ── "New points only" toggle: visible when some points are sampled and some aren't ──
+  const hasUnsampled = SMPL.data.some(d => d.values === null);
+  const modeRow = document.getElementById('sample-mode-row');
+  if (modeRow) modeRow.style.display = (sampledAny && hasUnsampled) ? 'block' : 'none';
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1350,8 +1383,9 @@ async function runSampling() {
     SMPL.running = false; return;
   }
 
-  SMPL.data.forEach(d => d.values = null);
-  document.getElementById('smpl-status').textContent = 'Grouping points by tile…';
+  const newOnly = document.getElementById('chk-sample-new-only')?.checked;
+  if (!newOnly) SMPL.data.forEach(d => d.values = null);
+  document.getElementById('smpl-status').textContent = newOnly ? 'Sampling new points only…' : 'Grouping points by tile…';
   await new Promise(r => requestAnimationFrame(r));
 
   let covered = 0;
@@ -1606,6 +1640,8 @@ function meshClassifyCanvas(rasters, rW, rH, nMinX, nMaxY, nMaxX, nMinY,
 }
 
 async function _doClassification(layer) {
+  // Free previous run's buffers so GC can reclaim them before allocating new ones
+  CLF.lastCanvasSpv = null; CLF.lastAssignSpv = null;
   const {images,projDef,epsg,origin:[ox,oy],res:[rx,ry],fullW,fullH,numBands,nodata} = layer;
   const mb=S.map.getBounds();
   const needsWarp=epsg!==4326&&epsg!==3857;
@@ -1746,6 +1782,8 @@ async function runClustering() {
 }
 
 async function _doKmeans(layer) {
+  // Free previous run's buffers so GC can reclaim them before allocating new ones
+  CLF.lastCanvasUnspv = null; CLF.lastAssignUnspv = null;
   const {images,projDef,epsg,origin:[ox,oy],res:[rx,ry],fullW,fullH,numBands,nodata} = layer;
   const mb = S.map.getBounds();
   const needsWarp = epsg!==4326&&epsg!==3857;
@@ -1876,14 +1914,17 @@ async function _doKmeans(layer) {
     }
   }
 
-  // Assign colors — match k-means centroids to user class colors by cosine similarity
-  const palette = CLS.classes.length>0
-    ? CLS.classes.map(c=>hexToRgb(c.color))
-    : CLASS_PALETTE.slice(0,K).map(h=>hexToRgb(h));
+  // Build one unique color per cluster (K colors total).
+  // Use user-defined class colors for the first N clusters, then fall back to CLASS_PALETTE.
+  const palette = Array.from({length: K}, (_, k) => {
+    if (CLS.classes.length > 0 && k < CLS.classes.length)
+      return hexToRgb(CLS.classes[k].color);
+    return hexToRgb(CLASS_PALETTE[k % CLASS_PALETTE.length]);
+  });
 
   // Build centroid objects for rendering (using Euclidean assignment = raw centroid)
   const kCents = centroids.map((c,k)=>{
-    const [r2,g2,b2]=palette[k%palette.length];
+    const [r2,g2,b2]=palette[k];
     return {rawMean:c,r:r2,g:g2,b:b2,name:`Cluster ${k+1}`,_idx:k+1};
   });
 
@@ -2070,34 +2111,37 @@ function exportGeoTIFF(which, ts) {
 }
 
 // ── GeoTIFF writer ────────────────────────────────────────
+// Uses pure DataView writes to avoid typed-array alignment restrictions.
 function buildGeoTIFF(W, H, assign, boundsLLB, centList) {
   const b={west:boundsLLB.getWest(),east:boundsLLB.getEast(),
            north:boundsLLB.getNorth(),south:boundsLLB.getSouth()};
   const pixW=(b.east-b.west)/W, pixH=(b.north-b.south)/H;
 
-  // Extra binary blobs
-  const pixScale = new Float64Array([pixW, pixH, 0.0]);
-  const tiepoint = new Float64Array([0, 0, 0, b.west, b.north, 0.0]);
-  const geoKeys  = new Uint16Array([1,1,0,3, 1024,0,1,2, 1025,0,1,1, 2048,0,1,4326]);
+  // Values we'll write as extra data
+  const pixScale=[pixW,pixH,0.0];       // 3 doubles = 24 bytes
+  const tiepoint=[0,0,0,b.west,b.north,0.0]; // 6 doubles = 48 bytes
+  const geoKeyVals=[1,1,0,3, 1024,0,1,2, 1025,0,1,1, 2048,0,1,4326]; // 16 uint16s = 32 bytes
 
-  // ColorMap: 256 R, 256 G, 256 B (uint16, 0-65535)
-  const cmap = new Uint16Array(768);
-  if (centList) {
-    for (const c of centList) {
+  // ColorMap: 256 R + 256 G + 256 B (uint16 each, 0-65535)
+  const cmap=new Array(768).fill(0);
+  if(centList){
+    for(const c of centList){
       const i=c._idx; if(i>=1&&i<=255){
         cmap[i]=(c.r*257); cmap[256+i]=(c.g*257); cmap[512+i]=(c.b*257);
       }
     }
   }
 
-  // TIFF layout
-  const hdrSz=8, nTags=14, ifdSz=2+nTags*12+4;
+  // Layout: header(8) + IFD + [extras] + image
+  const nTags=14;
+  const hdrSz=8, ifdSz=2+nTags*12+4;
+
+  // Place extras after IFD — no alignment needed since we use DataView
   let off=hdrSz+ifdSz;
-  const oPS=off; off+=pixScale.byteLength;  // 24
-  const oTP=off; off+=tiepoint.byteLength;  // 48
-  const oGK=off; off+=geoKeys.byteLength;   // 32
-  const oCM=off; off+=cmap.byteLength;      // 1536
-  if(off%4!==0)off+=4-off%4;               // 4-byte align
+  const oPS=off; off+=24;                     // 3 Float64
+  const oTP=off; off+=48;                     // 6 Float64
+  const oGK=off; off+=geoKeyVals.length*2;    // 16 Uint16
+  const oCM=off; off+=768*2;                  // 768 Uint16
   const oImg=off;
   const imgSz=W*H;
   const total=oImg+imgSz;
@@ -2108,34 +2152,39 @@ function buildGeoTIFF(W, H, assign, boundsLLB, centList) {
   let p=0;
   const w16=v=>{dv.setUint16(p,v,true);p+=2;};
   const w32=v=>{dv.setUint32(p,v,true);p+=4;};
+  const w64=v=>{dv.setFloat64(p,v,true);p+=8;};
   const te=(t,type,count,val)=>{w16(t);w16(type);w32(count);w32(val);};
 
-  // Header
+  // ── TIFF Header ──
   p=0; w16(0x4949); w16(42); w32(hdrSz);
-  // IFD
+
+  // ── IFD ── (tags must be in ascending tag-number order)
   p=hdrSz; w16(nTags);
-  te(256,4,1,W);           // ImageWidth
-  te(257,4,1,H);           // ImageLength
-  te(258,3,1,8);           // BitsPerSample=8
-  te(259,3,1,1);           // Compression=None
-  te(262,3,1,3);           // PhotometricInterp=Palette
-  te(273,4,1,oImg);        // StripOffsets
-  te(277,3,1,1);           // SamplesPerPixel=1
-  te(278,4,1,H);           // RowsPerStrip=H
-  te(279,4,1,imgSz);       // StripByteCounts
-  te(284,3,1,1);           // PlanarConfig=Chunky
-  te(320,3,768,oCM);       // ColorMap
-  te(33550,12,3,oPS);      // ModelPixelScaleTag
-  te(33922,12,6,oTP);      // ModelTiepointTag
-  te(34735,3,geoKeys.length,oGK); // GeoKeyDirectoryTag
-  w32(0); // next IFD=none
-  // Extra data
-  new Float64Array(buf,oPS,3).set(pixScale);
-  new Float64Array(buf,oTP,6).set(tiepoint);
-  new Uint16Array(buf,oGK,geoKeys.length).set(geoKeys);
-  new Uint16Array(buf,oCM,768).set(cmap);
-  // Image data
+  te(256,4,1,W);                    // ImageWidth (LONG)
+  te(257,4,1,H);                    // ImageLength (LONG)
+  te(258,3,1,8);                    // BitsPerSample=8 (SHORT inline)
+  te(259,3,1,1);                    // Compression=None
+  te(262,3,1,3);                    // PhotometricInterp=Palette
+  te(273,4,1,oImg);                 // StripOffsets
+  te(277,3,1,1);                    // SamplesPerPixel=1
+  te(278,4,1,H);                    // RowsPerStrip=full image
+  te(279,4,1,imgSz);                // StripByteCounts
+  te(284,3,1,1);                    // PlanarConfig=Chunky
+  te(320,3,768,oCM);                // ColorMap (Uint16 * 768)
+  te(33550,12,3,oPS);               // ModelPixelScaleTag (3 DOUBLE)
+  te(33922,12,6,oTP);               // ModelTiepointTag (6 DOUBLE)
+  te(34735,3,geoKeyVals.length,oGK);// GeoKeyDirectoryTag
+  w32(0); // next IFD offset = none
+
+  // ── Extra data (written with DataView — no alignment issues) ──
+  p=oPS; for(const v of pixScale) w64(v);
+  p=oTP; for(const v of tiepoint) w64(v);
+  p=oGK; for(const v of geoKeyVals) w16(v);
+  p=oCM; for(const v of cmap) w16(v);
+
+  // ── Image data ──
   u8.set(assign,oImg);
+
   return buf;
 }
 
@@ -2269,113 +2318,342 @@ function updateKDefault() {
   if (el) el.value=k;
 }
 
-// ═══════════════════════════════════════════════════════════
-// PCA VISUALIZATION
-// ═══════════════════════════════════════════════════════════
-function showPCAWindow() {
-  const pts=SMPL.data.filter(d=>d.values!==null);
-  if (!pts.length) { alert('Run sampling first to get embedding vectors.'); return; }
-  document.getElementById('pca-win').style.display='block';
-  renderPCACanvas(pts);
-}
-function closePCAWindow() {
-  document.getElementById('pca-win').style.display='none';
-}
+// ── Sampled-points CSV (with embedding vectors) ───────────
 
-function computePCA2D(vecs) {
-  const N=vecs.length; if(N<2) return vecs.map(()=>[0,0]);
-  const D=vecs[0].length;
-  // Mean center
-  const mean=new Float64Array(D);
-  for(const v of vecs) for(let d=0;d<D;d++) mean[d]+=v[d]/N;
-  const X=vecs.map(v=>{const c=new Float64Array(D);for(let d=0;d<D;d++)c[d]=v[d]-mean[d];return c;});
-  // Power iteration: find top eigenvector of X^T X
-  function powerIter(X2,iters=40){
-    let v=new Float64Array(D);
-    for(let d=0;d<D;d++) v[d]=Math.random()-0.5;
-    let n=0; for(let d=0;d<D;d++) n+=v[d]*v[d]; n=Math.sqrt(n)||1;
-    for(let d=0;d<D;d++) v[d]/=n;
-    for(let it=0;it<iters;it++){
-      const w=new Float64Array(D);
-      for(const xi of X2){let dot=0;for(let d=0;d<D;d++)dot+=xi[d]*v[d];for(let d=0;d<D;d++)w[d]+=dot*xi[d];}
-      let n2=0;for(let d=0;d<D;d++)n2+=w[d]*w[d];n2=Math.sqrt(n2)||1;
-      for(let d=0;d<D;d++)v[d]=w[d]/n2;
-    }
-    return v;
+function exportSampledCSV() {
+  const sampled = SMPL.data.filter(d => d.values !== null);
+  if (!sampled.length) { alert('No sampled points to export. Run Sampling first.'); return; }
+  const nDims = sampled[0].values.length;
+  const embHeader = Array.from({length: nDims}, (_, i) => `emb_${i+1}`).join(',');
+  const rows = [`class_name,latitude,longitude,color,${embHeader}`];
+  for (const pt of sampled) {
+    const cls = CLS.classes.find(c => c.id === pt.classId);
+    if (!cls) continue;
+    const embVals = Array.from(pt.values).map(v => {
+      // Compact but lossless: 6 sig-figs is enough for float32
+      return v.toPrecision(6);
+    }).join(',');
+    rows.push(`${cls.name},${pt.lat},${pt.lng},${cls.color},${embVals}`);
   }
-  const pc1=powerIter(X);
-  const proj1=X.map(xi=>{let dot=0;for(let d=0;d<D;d++)dot+=xi[d]*pc1[d];return dot;});
-  // Deflate and find PC2
-  const X2=X.map((xi,i)=>{const d2=new Float64Array(D);for(let d=0;d<D;d++)d2[d]=xi[d]-proj1[i]*pc1[d];return d2;});
-  const pc2=powerIter(X2);
-  const proj2=X.map(xi=>{let dot=0;for(let d=0;d<D;d++)dot+=xi[d]*pc2[d];return dot;});
-  return proj1.map((p1,i)=>[p1,proj2[i]]);
+  const blob = new Blob([rows.join('\n')], {type:'text/csv'});
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `sampled_embeddings_${new Date().toISOString().slice(0,10)}.csv`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 5000);
 }
 
-function renderPCACanvas(pts) {
-  const canvas=document.getElementById('pca-canvas');
-  const W=360, H=260, PAD=28, R=4.5;
-  canvas.width=W; canvas.height=H;
-  const ctx=canvas.getContext('2d');
-  ctx.fillStyle='#10111a'; ctx.fillRect(0,0,W,H);
+function importSampledCSV() {
+  document.getElementById('sampled-csv-file-input').click();
+}
 
-  const coords=computePCA2D(pts.map(p=>p.values));
-  let minX=Infinity,maxX=-Infinity,minY=Infinity,maxY=-Infinity;
-  for(const [x,y] of coords){if(x<minX)minX=x;if(x>maxX)maxX=x;if(y<minY)minY=y;if(y>maxY)maxY=y;}
-  const spanX=maxX-minX||1, spanY=maxY-minY||1;
-  const scX=(W-2*PAD)/spanX, scY=(H-2*PAD)/spanY;
-  const cx=x=>PAD+(x-minX)*scX, cy=y=>H-PAD-(y-minY)*scY;
+function handleSampledCSVFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+  const reader = new FileReader();
+  reader.onload = e => _parseSampledCSV(e.target.result);
+  reader.readAsText(file);
+}
 
-  // Grid
-  ctx.strokeStyle='#1e2136'; ctx.lineWidth=1;
-  const x0=cx(0), y0=cy(0);
-  if(x0>=PAD&&x0<=W-PAD){ctx.beginPath();ctx.moveTo(x0,PAD);ctx.lineTo(x0,H-PAD);ctx.stroke();}
-  if(y0>=PAD&&y0<=H-PAD){ctx.beginPath();ctx.moveTo(PAD,y0);ctx.lineTo(W-PAD,y0);ctx.stroke();}
+function _parseSampledCSV(text) {
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) { alert('CSV appears empty.'); return; }
 
-  // Points
-  for(let i=0;i<pts.length;i++){
-    const cls=CLS.classes.find(c=>c.id===pts[i].classId);
-    const col=cls?cls.color:'#888';
-    ctx.fillStyle=col; ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.lineWidth=0.5;
-    ctx.beginPath(); ctx.arc(cx(coords[i][0]),cy(coords[i][1]),R,0,Math.PI*2);
+  // Auto-detect separator
+  const sep = lines[0].includes('\t') ? '\t' : lines[0].includes(';') ? ';' : ',';
+  const header = lines[0].split(sep).map(s => s.trim().toLowerCase().replace(/^"|"$/g,''));
+
+  // Locate required columns
+  const ci = h => header.indexOf(h);
+  const nameCol  = ['class_name','class','label','name'].map(ci).find(i => i >= 0);
+  const latCol   = ['latitude','lat'].map(ci).find(i => i >= 0);
+  const lonCol   = ['longitude','lon','lng'].map(ci).find(i => i >= 0);
+  const colorCol = ['color','colour','hex'].map(ci).find(i => i >= 0);
+  if (nameCol == null || latCol == null || lonCol == null) {
+    alert('Cannot find required columns (class_name, latitude, longitude).'); return;
+  }
+
+  // Find embedding columns — emb_1, emb_2, ... sorted numerically
+  const embCols = header
+    .map((h, i) => ({h, i}))
+    .filter(({h}) => /^emb_\d+$/.test(h))
+    .sort((a, b) => parseInt(a.h.split('_')[1]) - parseInt(b.h.split('_')[1]))
+    .map(({i}) => i);
+
+  if (!embCols.length) {
+    alert('No embedding columns found (expected emb_1, emb_2, … emb_N).\nUse "Import CSV" (Step 2A) for plain lat/lon CSV files.'); return;
+  }
+
+  let added = 0, skipped = 0;
+  const boundsArr = [];
+  const nameToId = {};
+
+  for (let r = 1; r < lines.length; r++) {
+    const cols = lines[r].split(sep).map(s => s.trim().replace(/^"|"$/g,''));
+    const name  = cols[nameCol];
+    const lat   = parseFloat(cols[latCol]);
+    const lng   = parseFloat(cols[lonCol]);
+    if (!name || !isFinite(lat) || !isFinite(lng)) { skipped++; continue; }
+    const csvColor = colorCol != null ? (cols[colorCol]||'').trim() : '';
+
+    // Find or create class
+    let clsId = nameToId[name];
+    if (clsId == null) {
+      let cls = CLS.classes.find(c => c.name.toLowerCase() === name.toLowerCase());
+      if (!cls) {
+        const color = /^#[0-9a-fA-F]{3,6}$/.test(csvColor) ? csvColor : CLASS_PALETTE[CLS.classes.length % CLASS_PALETTE.length];
+        cls = { id: CLS.nextId++, name, color };
+        CLS.classes.push(cls);
+        document.getElementById('new-cls-color').value = CLASS_PALETTE[CLS.classes.length % CLASS_PALETTE.length];
+      } else if (/^#[0-9a-fA-F]{3,6}$/.test(csvColor)) {
+        cls.color = csvColor;
+        SMPL.data.filter(d => d.classId === cls.id).forEach(d => d.marker?.setStyle({color:csvColor,fillColor:csvColor}));
+      }
+      nameToId[name] = cls.id;
+      clsId = cls.id;
+    }
+    const cls = CLS.classes.find(c => c.id === clsId);
+
+    // Build embedding vector
+    const vals = new Float32Array(embCols.length);
+    let validEmb = true;
+    for (let k = 0; k < embCols.length; k++) {
+      const v = parseFloat(cols[embCols[k]]);
+      if (!isFinite(v)) { validEmb = false; break; }
+      vals[k] = v;
+    }
+    if (!validEmb) { skipped++; continue; }
+
+    // Add map marker
+    const ptId = SMPL.nextPtId++;
+    const latlng = L.latLng(lat, lng);
+    const marker = L.circleMarker(latlng, {
+      pane:'training-pts', radius:5, color:cls.color, fillColor:cls.color,
+      weight:1.5, fillOpacity:0.85,
+    });
+    marker.addTo(S.map);
+    marker.bindTooltip(cls.name, {permanent:false, direction:'top', offset:[0,-6]});
+    marker.on('contextmenu', () => deletePoint(ptId));
+    SMPL.data.push({ptId, lat, lng, classId: clsId, values: vals, marker});
+    boundsArr.push(latlng);
+    added++;
+  }
+
+  if (!added) { alert(`No valid rows found. ${skipped} skipped.`); return; }
+  SMPL.done = true;
+  if (boundsArr.length) S.map.fitBounds(L.latLngBounds(boundsArr), {padding:[40,40]});
+  updateKDefault();
+  computeCentroids();
+  renderClassList();
+  updateSamplingUI();
+  alert(`Imported ${added} sampled point${added!==1?'s':''} with embeddings.${skipped?` (${skipped} skipped — invalid rows)`:''}`);
+}
+
+// ═══════════════════════════════════════════════════════════
+// PCA VISUALIZATION — 3D
+// ═══════════════════════════════════════════════════════════
+
+const PCA_STATE = {
+  coords3D: null,   // [[x,y,z], ...]
+  pts: null,        // sampled points with classId
+  angleX: 0.35,     // radians — tilt around X axis
+  angleY: 0.55,     // radians — spin around Y axis
+  zoom: 1.0,
+  dragging: false,
+  lastMouseX: 0,
+  lastMouseY: 0,
+  animFrame: null,
+};
+
+function showPCAWindow() {
+  const pts = SMPL.data.filter(d => d.values !== null);
+  if (!pts.length) { alert('Run sampling first to get embedding vectors.'); return; }
+  PCA_STATE.pts = pts;
+  PCA_STATE.coords3D = computePCA3D(pts.map(p => p.values));
+  const win = document.getElementById('pca-win');
+  win.style.display = 'block';
+  drawPCA3D();
+}
+
+function closePCAWindow() {
+  document.getElementById('pca-win').style.display = 'none';
+  if (PCA_STATE.animFrame) { cancelAnimationFrame(PCA_STATE.animFrame); PCA_STATE.animFrame = null; }
+}
+
+// Power iteration to find top-k eigenvectors via deflation
+function computePCA3D(vecs) {
+  const N = vecs.length; if (N < 2) return vecs.map(() => [0, 0, 0]);
+  const D = vecs[0].length;
+  // Mean-center
+  const mean = new Float64Array(D);
+  for (const v of vecs) for (let d = 0; d < D; d++) mean[d] += v[d] / N;
+  let X = vecs.map(v => { const c = new Float64Array(D); for (let d = 0; d < D; d++) c[d] = v[d] - mean[d]; return c; });
+
+  function powerIter(Xc, iters = 50) {
+    let ev = new Float64Array(D);
+    for (let d = 0; d < D; d++) ev[d] = Math.random() - 0.5;
+    let n = 0; for (let d = 0; d < D; d++) n += ev[d] * ev[d]; n = Math.sqrt(n) || 1;
+    for (let d = 0; d < D; d++) ev[d] /= n;
+    for (let it = 0; it < iters; it++) {
+      const w = new Float64Array(D);
+      for (const xi of Xc) { let dot = 0; for (let d = 0; d < D; d++) dot += xi[d] * ev[d]; for (let d = 0; d < D; d++) w[d] += dot * xi[d]; }
+      let n2 = 0; for (let d = 0; d < D; d++) n2 += w[d] * w[d]; n2 = Math.sqrt(n2) || 1;
+      for (let d = 0; d < D; d++) ev[d] = w[d] / n2;
+    }
+    return ev;
+  }
+
+  function project(Xc, ev) { return Xc.map(xi => { let dot = 0; for (let d = 0; d < D; d++) dot += xi[d] * ev[d]; return dot; }); }
+
+  function deflate(Xc, ev, proj) {
+    return Xc.map((xi, i) => { const r = new Float64Array(D); for (let d = 0; d < D; d++) r[d] = xi[d] - proj[i] * ev[d]; return r; });
+  }
+
+  const pc1 = powerIter(X); const p1 = project(X, pc1);
+  X = deflate(X, pc1, p1);
+  const pc2 = powerIter(X); const p2 = project(X, pc2);
+  X = deflate(X, pc2, p2);
+  const pc3 = powerIter(X); const p3 = project(X, pc3);
+
+  // Normalise to [-1, 1] on each axis for stable display
+  const norm = arr => { const mx = Math.max(...arr.map(Math.abs)) || 1; return arr.map(v => v / mx); };
+  const n1 = norm(p1), n2 = norm(p2), n3 = norm(p3);
+  return n1.map((v, i) => [v, n2[i], n3[i]]);
+}
+
+function drawPCA3D() {
+  const canvas = document.getElementById('pca-canvas');
+  const W = canvas.offsetWidth || 360;
+  const H = 300;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+
+  const pts = PCA_STATE.pts;
+  const coords = PCA_STATE.coords3D;
+  if (!pts || !coords) return;
+
+  // Rotation matrices
+  const ax = PCA_STATE.angleX, ay = PCA_STATE.angleY;
+  const cosX = Math.cos(ax), sinX = Math.sin(ax);
+  const cosY = Math.cos(ay), sinY = Math.sin(ay);
+
+  // Rotate [x,y,z] → screen [sx,sy] with perspective
+  const fov = 2.8 * PCA_STATE.zoom;
+  function project3D([x, y, z]) {
+    // Rotate around Y axis
+    const x1 = x * cosY + z * sinY;
+    const z1 = -x * sinY + z * cosY;
+    // Rotate around X axis
+    const y2 = y * cosX - z1 * sinX;
+    const z2 = y * sinX + z1 * cosX;
+    const scale = fov / (fov + z2 + 2);
+    const sx = W / 2 + x1 * scale * W * 0.38;
+    const sy = H / 2 - y2 * scale * H * 0.38;
+    return { sx, sy, z2, scale };
+  }
+
+  ctx.fillStyle = '#10111a';
+  ctx.fillRect(0, 0, W, H);
+
+  // Draw faint axis lines
+  const axisEnds = [[1,0,0,'PC1'],[-1,0,0,null],[0,1,0,'PC2'],[0,-1,0,null],[0,0,1,'PC3'],[0,0,-1,null]];
+  ctx.strokeStyle = 'rgba(60,75,120,0.7)'; ctx.lineWidth = 0.8;
+  ctx.fillStyle = '#3a5080'; ctx.font = '10px sans-serif';
+  for (let i = 0; i < axisEnds.length; i += 2) {
+    const a = project3D(axisEnds[i]), b = project3D(axisEnds[i + 1]);
+    ctx.beginPath(); ctx.moveTo(a.sx, a.sy); ctx.lineTo(b.sx, b.sy); ctx.stroke();
+    if (axisEnds[i][3]) {
+      ctx.fillStyle = '#4a6090'; ctx.textAlign = 'center';
+      ctx.fillText(axisEnds[i][3], a.sx, a.sy - 4);
+    }
+  }
+
+  // Project all points with depth info, then sort back-to-front
+  const projected = coords.map((c, i) => {
+    const { sx, sy, z2, scale } = project3D(c);
+    const cls = CLS.classes.find(cl => cl.id === pts[i].classId);
+    const col = cls ? cls.color : '#888888';
+    return { sx, sy, z2, scale, col };
+  });
+  projected.sort((a, b) => a.z2 - b.z2);
+
+  // Draw points
+  for (const { sx, sy, z2, scale, col } of projected) {
+    const r = Math.max(2, 4.5 * scale);
+    const alpha = 0.55 + 0.45 * scale;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = col;
+    ctx.strokeStyle = 'rgba(255,255,255,0.18)'; ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2);
     ctx.fill(); ctx.stroke();
   }
+  ctx.globalAlpha = 1;
 
-  // Axis labels
-  ctx.fillStyle='#4a5570'; ctx.font='10px sans-serif'; ctx.textAlign='center';
-  ctx.fillText('PC1',W/2,H-4);
-  ctx.save(); ctx.translate(10,H/2); ctx.rotate(-Math.PI/2); ctx.fillText('PC2',0,0); ctx.restore();
-  ctx.textAlign='left';
+  // Hint text
+  ctx.fillStyle = '#2a3555'; ctx.font = '9px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText('Drag to rotate  •  Scroll to zoom', W / 2, H - 5);
 
   // Legend
-  const usedCls=CLS.classes.filter(c=>pts.some(p=>p.classId===c.id));
-  document.getElementById('pca-legend').innerHTML=usedCls.map(c=>
+  const usedCls = CLS.classes.filter(c => pts.some(p => p.classId === c.id));
+  document.getElementById('pca-legend').innerHTML = usedCls.map(c =>
     `<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:#c0cce0;">
       <span style="width:10px;height:10px;border-radius:2px;background:${c.color};display:inline-block;flex-shrink:0;"></span>
       ${esc(c.name)}</span>`
   ).join('');
 }
 
-// Draggable PCA window
-(function(){
-  let drag=false,startX=0,startY=0,origX=0,origY=0;
-  document.addEventListener('DOMContentLoaded',()=>{
-    const hd=document.getElementById('pca-win-hd');
-    const win=document.getElementById('pca-win');
-    hd.addEventListener('mousedown',e=>{
-      drag=true; startX=e.clientX; startY=e.clientY;
-      const r=win.getBoundingClientRect();
-      origX=r.left; origY=r.top;
-      win.style.right='auto'; win.style.bottom='auto';
-      win.style.left=origX+'px'; win.style.top=origY+'px';
-      document.body.style.userSelect='none'; e.preventDefault();
+// Draggable window + orbit controls on canvas
+(function () {
+  let winDrag = false, wSX = 0, wSY = 0, wOX = 0, wOY = 0;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const hd = document.getElementById('pca-win-hd');
+    const win = document.getElementById('pca-win');
+    const canvas = document.getElementById('pca-canvas');
+
+    // — Window drag —
+    hd.addEventListener('mousedown', e => {
+      winDrag = true; wSX = e.clientX; wSY = e.clientY;
+      const r = win.getBoundingClientRect();
+      wOX = r.left; wOY = r.top;
+      win.style.right = 'auto'; win.style.bottom = 'auto';
+      win.style.left = wOX + 'px'; win.style.top = wOY + 'px';
+      document.body.style.userSelect = 'none'; e.preventDefault();
     });
-    document.addEventListener('mousemove',e=>{
-      if(!drag)return;
-      win.style.left=(origX+e.clientX-startX)+'px';
-      win.style.top=(origY+e.clientY-startY)+'px';
+    document.addEventListener('mousemove', e => {
+      if (!winDrag) return;
+      win.style.left = (wOX + e.clientX - wSX) + 'px';
+      win.style.top  = (wOY + e.clientY - wSY) + 'px';
     });
-    document.addEventListener('mouseup',()=>{drag=false;document.body.style.userSelect='';});
+    document.addEventListener('mouseup', () => { winDrag = false; document.body.style.userSelect = ''; });
+
+    // — Orbit controls on canvas —
+    canvas.addEventListener('mousedown', e => {
+      PCA_STATE.dragging = true;
+      PCA_STATE.lastMouseX = e.clientX;
+      PCA_STATE.lastMouseY = e.clientY;
+      e.preventDefault();
+    });
+    canvas.addEventListener('mousemove', e => {
+      if (!PCA_STATE.dragging) return;
+      const dx = e.clientX - PCA_STATE.lastMouseX;
+      const dy = e.clientY - PCA_STATE.lastMouseY;
+      PCA_STATE.angleY += dx * 0.012;
+      PCA_STATE.angleX += dy * 0.012;
+      PCA_STATE.lastMouseX = e.clientX;
+      PCA_STATE.lastMouseY = e.clientY;
+      if (PCA_STATE.coords3D) drawPCA3D();
+    });
+    canvas.addEventListener('mouseup', () => { PCA_STATE.dragging = false; });
+    canvas.addEventListener('mouseleave', () => { PCA_STATE.dragging = false; });
+
+    canvas.addEventListener('wheel', e => {
+      e.preventDefault();
+      PCA_STATE.zoom *= e.deltaY < 0 ? 1.1 : 0.91;
+      PCA_STATE.zoom = Math.max(0.2, Math.min(5, PCA_STATE.zoom));
+      if (PCA_STATE.coords3D) drawPCA3D();
+    }, { passive: false });
   });
 })();
 
