@@ -2359,7 +2359,7 @@ const S2 = { layer: null };
 async function loadS2TilesGeoJSON() {
   const statusEl = document.getElementById('s2-status');
   try {
-    const res = await fetch('uk_viewer_csvs/uk_grid_s2tiles.geojson');
+    const res = await fetch('uk_grid_s2tiles.geojson');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const geojson = await res.json();
     S2.layer = L.geoJSON(geojson, {
