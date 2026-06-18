@@ -113,7 +113,7 @@ body {
 
 .loprow { display:flex; align-items:center; gap:6px; margin-top:6px; }
 .loprow label { font-size:10px; color:#7a86a0; flex-shrink:0; }
-.loprow input[type=range] { flex:1; height:3px; accent-color:#3a7bd5; cursor:pointer; }
+.loprow input[type=range] { flex:1; height:6px; accent-color:#3a7bd5; cursor:pointer; border-radius:3px; }
 .loprow span { font-size:10px; color:#8892aa; width:28px; text-align:right; }
 
 .lstat { font-size:10px; margin-top:5px; padding:3px 6px; border-radius:3px; background:#13151f; }
@@ -352,9 +352,101 @@ input.sp-colorpick { width: 28px; height: 22px; border: none; border-radius: 3px
 }
 .ep-legend span { display:inline-flex; align-items:center; gap:4px; }
 .ep-legend b { display:inline-block; width:8px; height:8px; border-radius:2px; }
+
+/* S2 tile grid label */
+.s2-tile-label { background:transparent !important; border:none !important; box-shadow:none !important; font-size:10px; font-weight:700; color:#5a9be8; text-shadow:0 0 3px #000, 0 0 6px #000; }
+.s2-toggle-row { display:flex; align-items:center; gap:6px; }
+.s2-toggle-row label { font-size:10px; color:#8892aa; display:flex; align-items:center; gap:5px; cursor:pointer; }
+#s2-status { font-size:10px; color:#4a5570; margin-top:3px; }
+
+/* S2 heading style (prominent) */
+.s2-heading {
+  font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.8px;
+  color:#7eb8f7; display:flex; align-items:center; gap:8px;
+}
+
+/* Scrollable embedding layer list */
+#le { max-height:200px; overflow-y:auto; }
+#le::-webkit-scrollbar { width:4px; }
+#le::-webkit-scrollbar-thumb { background:#2d3155; border-radius:2px; }
+
+/* Tour halo spotlight */
+#tour-halo {
+  position:fixed; z-index:9001; pointer-events:none; display:none;
+  border:2px solid #3a7bd5; border-radius:6px;
+  box-shadow: 0 0 0 4000px rgba(0,0,0,0.25), 0 0 0 4px rgba(58,123,213,0.3), 0 0 22px rgba(58,123,213,0.8);
+  animation: haloGlow 1.8s ease-in-out infinite;
+}
+@keyframes haloGlow {
+  0%,100% { box-shadow: 0 0 0 4000px rgba(0,0,0,0.25), 0 0 0 4px rgba(58,123,213,0.3), 0 0 22px rgba(58,123,213,0.8); }
+  50%      { box-shadow: 0 0 0 4000px rgba(0,0,0,0.25), 0 0 0 7px rgba(58,123,213,0.5), 0 0 36px rgba(58,123,213,1.0); }
+}
+
+/* Tour modal */
+#tour-overlay {
+  position:fixed; inset:0; z-index:9000; background:rgba(0,0,0,.25);
+  display:flex; align-items:center; justify-content:center; transition:opacity .2s;
+  pointer-events:none;
+}
+#tour-box {
+  background:#181a2a; border:1px solid #2d3565; border-radius:10px;
+  width:420px; max-width:calc(100vw - 32px); box-shadow:0 16px 60px #000c; overflow:hidden;
+  pointer-events:all;
+}
+#tour-bar { display:flex; gap:3px; padding:10px 14px 0; }
+.tour-dot { flex:1; height:3px; border-radius:2px; background:#1e2346; transition:background .2s; }
+.tour-dot.active { background:#3a7bd5; }
+.tour-dot.done   { background:#2a5a9a; }
+#tour-body { padding:18px 20px 12px; }
+#tour-icon { font-size:32px; margin-bottom:10px; }
+#tour-title { font-size:17px; font-weight:700; color:#a8c8f8; margin-bottom:10px; }
+#tour-desc  { font-size:14px; color:#8898b8; line-height:1.7; }
+#tour-desc b { color:#c0d4f0; }
+#tour-desc code { background:#111422; padding:1px 5px; border-radius:3px; font-size:12px; color:#6ac; }
+#tour-foot {
+  display:flex; align-items:center; gap:6px;
+  padding:10px 16px 14px; border-top:1px solid #1e2036;
+}
+.tour-btn { padding:6px 16px; border-radius:5px; font-size:12px; font-weight:600; cursor:pointer; border:1px solid #2d3155; transition:all .15s; }
+.tour-btn-skip   { background:none; color:#5a6480; margin-right:auto; border-color:transparent; }
+.tour-btn-skip:hover { color:#8892aa; }
+.tour-btn-prev   { background:#1e2136; color:#7a86a0; }
+.tour-btn-prev:hover { background:#252840; color:#a0aac0; }
+.tour-btn-next   { background:#1b2f50; color:#7eb8f7; border-color:#3a7bd5; }
+.tour-btn-next:hover { background:#1e3a62; }
+.tour-btn-finish { background:#1b3320; color:#4abf6a; border-color:#2d6b2d; }
+.tour-btn-finish:hover { background:#1f3a26; }
+#tour-step-ctr { font-size:11px; color:#4a5570; margin-right:auto; }
+#btn-tour-reopen {
+  font-size:11px; font-weight:700; padding:3px 9px; border-radius:4px;
+  border:1px solid #2d3a6a; color:#5a7ab0; background:#131828;
+  cursor:pointer; flex-shrink:0; transition:all .15s;
+}
+#btn-tour-reopen:hover { border-color:#3a7bd5; color:#7eb8f7; }
 </style>
 </head>
 <body>
+
+<!-- ═══ TOUR HALO SPOTLIGHT ══════════════════════════════════ -->
+<div id="tour-halo"></div>
+
+<!-- ═══ TOUR MODAL ════════════════════════════════════════════ -->
+<div id="tour-overlay" style="display:none;">
+  <div id="tour-box">
+    <div id="tour-bar"></div>
+    <div id="tour-body">
+      <div id="tour-icon"></div>
+      <div id="tour-title"></div>
+      <div id="tour-desc"></div>
+    </div>
+    <div id="tour-foot">
+      <button class="tour-btn tour-btn-skip" onclick="skipTour()">Skip Tour</button>
+      <span id="tour-step-ctr"></span>
+      <button class="tour-btn tour-btn-prev" id="tour-prev" onclick="tourStep(-1)">← Back</button>
+      <button class="tour-btn tour-btn-next" id="tour-next" onclick="tourStep(1)">Next →</button>
+    </div>
+  </div>
+</div>
 
 <div id="hdr">
   <a href="https://worldcereal.github.io" target="_blank" class="wc-logo-link" title="WorldCereal Project">
@@ -364,6 +456,7 @@ input.sp-colorpick { width: 28px; height: 22px; border: none; border-radius: 3px
   <span class="sub">Multi-layer • Viewport-adaptive • 1–99% stretch</span>
   <nav class="hdr-nav">
     <span class="nav-pill active">🗺 Viewer</span>
+    <a href="float.html" class="nav-pill" target="_blank">⚡ Float32</a>
     <a href="classify.html" class="nav-pill" target="_blank">🔬 Classify</a>
   </nav>
   <button class="tbtn-explore" id="btn-explore"
@@ -373,6 +466,7 @@ input.sp-colorpick { width: 28px; height: 22px; border: none; border-radius: 3px
     data-tip="Load an embedding tile, then draw polygons over different land cover types"
     onclick="toggleSampler()">⬡ PCA Sampler</button>
   <span class="hint">Click map for pixel values</span>
+  <button id="btn-tour-reopen" onclick="showTour(true)" title="Open page tour">? Tour</button>
 </div>
 
 <div id="main">
@@ -388,6 +482,18 @@ input.sp-colorpick { width: 28px; height: 22px; border: none; border-radius: 3px
         <a href="https://docs.cloudferro.com/en/latest/s3/s3-cors.html" target="_blank">Cloudferro CORS setup ↗</a>
       </div>
 
+      <!-- ── S2 TILE GRID (top) ──────────────────────────────── -->
+      <div class="sec" style="border:1px solid #1e3060;border-radius:6px;padding:8px 10px;background:#111422;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <span class="s2-heading">🗺 S2 Tile Grid</span>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;color:#8892aa;">
+            <input type="checkbox" id="s2-tiles-toggle" checked onchange="toggleS2TilesLayer(this.checked)" style="margin:0;">
+            Show
+          </label>
+        </div>
+        <div id="s2-status" style="font-size:10px;color:#4a5570;">Loading tile grid…</div>
+      </div>
+
       <div class="sec">
         <div class="sec-title">Display Layers (RGB) <span id="cnt-d" class="sbadge">0</span></div>
         <div id="ld"><div class="empty">Loading pre-configured layer…</div></div>
@@ -399,7 +505,7 @@ input.sp-colorpick { width: 28px; height: 22px; border: none; border-radius: 3px
       </div>
 
       <div class="sec">
-        <div class="sec-title">STAC Catalog — presto-embeddings-uk</div>
+        <div class="sec-title">STAC Catalog: presto-embeddings-uk</div>
         <div class="stacbar">
           <input class="stfil" id="stfil" type="text" placeholder="Filter…" oninput="filterSTAC()"/>
           <button class="bsm" id="stbtn" onclick="fetchSTAC()">Fetch</button>
@@ -470,7 +576,7 @@ input.sp-colorpick { width: 28px; height: 22px; border: none; border-radius: 3px
     <!-- 3D PCA explorer panel -->
     <div id="ep">
       <div class="ep-head">
-        <span class="ep-title">3D Embedding Space — PCA</span>
+        <span class="ep-title">3D Embedding Space: PCA</span>
         <span id="ep-status">Draw a rectangle over a loaded embedding tile</span>
         <button class="ep-close" onclick="closeExplore()">✕</button>
       </div>
@@ -1574,7 +1680,7 @@ async function onSamplerUp(e) {
 
   if (latSpan < 0.001 || lngSpan < 0.001) {
     if (rectRef) S.map.removeLayer(rectRef);
-    setSpStatus('Rectangle too small — drag over a larger area.'); return;
+    setSpStatus('Rectangle too small: drag over a larger area.'); return;
   }
 
   // Find a visible embedding layer to read from
@@ -1584,12 +1690,12 @@ async function onSamplerUp(e) {
   );
   if (!embedLayer) {
     if (rectRef) S.map.removeLayer(rectRef);
-    setSpStatus('⚠ No embedding tile loaded — add one from the STAC catalog first.'); return;
+    setSpStatus('⚠ No embedding tile loaded: add one from the STAC catalog first.'); return;
   }
 
   if (SAMPLER.pending) {
     if (rectRef) S.map.removeLayer(rectRef);
-    setSpStatus('⚠ Still computing previous sample — please wait a moment.'); return;
+    setSpStatus('⚠ Still computing previous sample: please wait a moment.'); return;
   }
 
   // Get name + color from controls
@@ -1614,7 +1720,7 @@ async function onSamplerUp(e) {
   }
 
   if (!pixels || pixels.length < 5) {
-    setSpStatus(`⚠ Only ${pixels?.length ?? 0} valid pixels — draw a larger rectangle over the embedding tile.`);
+    setSpStatus(`⚠ Only ${pixels?.length ?? 0} valid pixels : draw a larger rectangle over the embedding tile.`);
     SAMPLER.pending = false;
     if (btn) btn.disabled = false;
     if (rectRef) S.map.removeLayer(rectRef);
@@ -1633,7 +1739,7 @@ async function onSamplerUp(e) {
   if (nameEl) nameEl.value = '';
 
   if (SAMPLER.samples.length >= SP_WARN) {
-    setSpStatus(`⚠ ${SAMPLER.samples.length} classes — many classes can clutter the view.`);
+    setSpStatus(`⚠ ${SAMPLER.samples.length} classes : many classes can clutter the view.`);
   }
 
   renderSamplerList();
@@ -1931,7 +2037,7 @@ async function onExploreUp(e) {
   );
   if (!embedLayer) {
     document.getElementById('ep-status').textContent =
-      '⚠ No embedding tile loaded — load one from the STAC catalog first.';
+      '⚠ No embedding tile loaded: load one from the STAC catalog first.';
     return;
   }
 
@@ -2025,7 +2131,7 @@ async function runPCAExplore(layer, wgs84Bounds) {
   }
 
   if (pixels.length < 10) {
-    setStatus(`⚠ Only ${pixels.length} valid pixels in selection — draw a larger rectangle.`); return;
+    setStatus(`⚠ Only ${pixels.length} valid pixels in selection : draw a larger rectangle.`); return;
   }
 
   setStatus(`Computing PCA on ${pixels.length} pixels × ${numBands} bands…`);
@@ -2239,6 +2345,184 @@ async function init() {
   }
   // STAC preloads fire after display layers — don't await so they load in parallel
   for (const cfg of CFG.PRELOAD_STAC) loadSTACPreload(cfg);
+
+  // S2 tile grid + tour
+  loadS2TilesGeoJSON();
+  showTour();
+}
+
+// ═══════════════════════════════════════════════════════════
+// S2 TILE GRID (GeoJSON)
+// ═══════════════════════════════════════════════════════════
+const S2 = { layer: null };
+
+async function loadS2TilesGeoJSON() {
+  const statusEl = document.getElementById('s2-status');
+  try {
+    const res = await fetch('uk_viewer_csvs/uk_grid_s2tiles.geojson');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const geojson = await res.json();
+    S2.layer = L.geoJSON(geojson, {
+      style: { color:'#4a8fd5', weight:1.5, opacity:0.7, fill:false, interactive:true },
+      onEachFeature: (feat, layer) => {
+        const label = feat.properties?.s2_tile || '';
+        layer.bindTooltip(label, {
+          permanent:true, direction:'center', className:'s2-tile-label', opacity:0.85,
+        });
+        layer.bindPopup(`<b>S2 Tile:</b> ${label}`);
+      },
+    }).addTo(S.map);
+    const n = geojson.features?.length || 0;
+    statusEl.textContent = `${n} tile polygons`;
+    statusEl.style.color = '#4a6';
+  } catch(e) {
+    statusEl.textContent = `Failed: ${e.message}`;
+    statusEl.style.color = '#c0392b';
+    document.getElementById('s2-tiles-toggle').disabled = true;
+  }
+}
+
+function toggleS2TilesLayer(show) {
+  if (!S2.layer) return;
+  if (show) S2.layer.addTo(S.map);
+  else S.map.removeLayer(S2.layer);
+}
+
+// ═══════════════════════════════════════════════════════════
+// PAGE TOUR
+// ═══════════════════════════════════════════════════════════
+const TOUR_STEPS = [
+  {
+    icon: '🛰',
+    title: 'Welcome to the WorldCereal COG Viewer',
+    target: null,
+    desc: `Explore and compare <b>128-band embedding tiles</b> produced by the WorldCereal Presto model over the UK.<br><br>
+Pan and zoom the map to navigate. Layers render adaptively at the current viewport resolution. No need to load the full file.`,
+  },
+  {
+    icon: '🗺',
+    title: 'S2 Tile Grid',
+    target: '.s2-heading',
+    desc: `The <b>S2 Tile Grid</b> at the top of the sidebar shows blue polygon outlines for all available S2 tiles, each labelled with its tile ID (e.g. <code>30UXD</code>).<br><br>
+Use the <b>Show</b> toggle to hide or reveal the outlines. Click a polygon to see the tile ID. This helps you identify which tile to load for a specific region.`,
+  },
+  {
+    icon: '📂',
+    title: 'Left Sidebar: Layer Management',
+    target: '#ld',
+    desc: `<b>Display Layers</b> shows pre-loaded RGB composites and PCA visualisations.<br>
+<b>Embedding Layers (128-band)</b> lists full embedding COGs for exploration and classification.<br>
+<b>STAC Catalog</b> lets you browse all available UK tiles and click to load any of them.<br>
+<b>Add Custom COG URL</b> accepts any Cloud-Optimised GeoTIFF URL to add your own layers.`,
+  },
+  {
+    icon: '🎛',
+    title: 'Layer Controls',
+    target: '#le',
+    desc: `Each loaded layer has controls for:<br>
+<b>Visibility toggle</b> and <b>Opacity slider</b><br>
+<b>R/G/B band selection</b> for embedding layers. Try different band combos to highlight spectral differences.<br>
+<b>Recompute</b> recalculates the 1-99% stretch from the current viewport.<br>
+<b>Use ref</b> snaps back to the shared stretch from the reference tile (30UXD).<br>
+<b>COG</b> opens the raw 128-band GeoTIFF in a new tab for download.`,
+  },
+  {
+    icon: '⬡',
+    title: 'Explore 3D and PCA Sampler',
+    target: '#btn-explore',
+    desc: `Two advanced tools live in the header bar:<br><br>
+<b>Explore 3D</b> lets you load an embedding tile, draw a rectangle over any area, and see a live 3D PCA scatter plot of the pixels coloured by a 3-band PCA projection.<br><br>
+<b>PCA Sampler</b> lets you draw polygons over different land-cover types and compare their embedding distributions in a shared 3D PCA space.`,
+  },
+  {
+    icon: '🔬',
+    title: 'Ready to Classify?',
+    target: null,
+    desc: `Once you have explored the embeddings here, head to the <b>Classify page</b> to train supervised or K-means classifiers and export results as PNG or GeoTIFF.<br><br>
+Click <b>Classify</b> in the top-right navigation to open it in a new tab.`,
+  },
+];
+
+let TOUR_IDX = 0;
+
+function _tourShowHalo(selector) {
+  const halo = document.getElementById('tour-halo');
+  const box  = document.getElementById('tour-box');
+  const ov   = document.getElementById('tour-overlay');
+  if (!selector) {
+    halo.style.display = 'none';
+    box.style.position = '';
+    box.style.left = box.style.top = box.style.right = box.style.bottom = '';
+    ov.style.alignItems = 'center';
+    ov.style.justifyContent = 'center';
+    ov.style.background = 'rgba(0,0,0,.25)';
+    return;
+  }
+  const el = document.querySelector(selector);
+  if (!el) { _tourShowHalo(null); return; }
+  const r = el.getBoundingClientRect();
+  halo.style.display = 'block';
+  halo.style.left   = (r.left   - 5) + 'px';
+  halo.style.top    = (r.top    - 5) + 'px';
+  halo.style.width  = (r.width  + 10) + 'px';
+  halo.style.height = (r.height + 10) + 'px';
+  // Overlay is transparent — halo box-shadow provides the dimming
+  ov.style.background = 'transparent';
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const bw = Math.min(440, vw - 24), bh = 400;
+  let left, top;
+  ov.style.alignItems = 'flex-start';
+  ov.style.justifyContent = 'flex-start';
+  if (r.right + bw + 24 <= vw) {
+    left = r.right + 16; top = Math.max(8, Math.min(vh - bh - 8, r.top + r.height / 2 - bh / 2));
+  } else if (r.left - bw - 24 >= 0) {
+    left = r.left - bw - 16; top = Math.max(8, Math.min(vh - bh - 8, r.top + r.height / 2 - bh / 2));
+  } else if (r.bottom + bh + 16 <= vh) {
+    left = Math.max(8, Math.min(vw - bw - 8, r.left + r.width / 2 - bw / 2)); top = r.bottom + 16;
+  } else {
+    left = Math.max(8, Math.min(vw - bw - 8, r.left + r.width / 2 - bw / 2)); top = Math.max(8, r.top - bh - 16);
+  }
+  box.style.position = 'fixed';
+  box.style.left = left + 'px';
+  box.style.top  = top + 'px';
+}
+
+function showTour(forceShow) {
+  const seen = localStorage.getItem('wc_viewer_tour_seen');
+  if (seen && !forceShow) return;
+  TOUR_IDX = 0;
+  renderTourStep();
+  document.getElementById('tour-overlay').style.display = 'flex';
+}
+
+function skipTour() {
+  document.getElementById('tour-overlay').style.display = 'none';
+  document.getElementById('tour-halo').style.display = 'none';
+  localStorage.setItem('wc_viewer_tour_seen', '1');
+}
+
+function tourStep(dir) {
+  TOUR_IDX = Math.max(0, Math.min(TOUR_STEPS.length - 1, TOUR_IDX + dir));
+  renderTourStep();
+}
+
+function renderTourStep() {
+  const step = TOUR_STEPS[TOUR_IDX];
+  const n = TOUR_STEPS.length;
+  document.getElementById('tour-icon').textContent  = step.icon;
+  document.getElementById('tour-title').textContent = step.title;
+  document.getElementById('tour-desc').innerHTML    = step.desc;
+  document.getElementById('tour-step-ctr').textContent = `${TOUR_IDX + 1} / ${n}`;
+  document.getElementById('tour-prev').style.visibility = TOUR_IDX === 0 ? 'hidden' : 'visible';
+  const nextBtn = document.getElementById('tour-next');
+  const isLast  = TOUR_IDX === n - 1;
+  nextBtn.textContent = isLast ? '✓ Get Started' : 'Next →';
+  nextBtn.className   = 'tour-btn ' + (isLast ? 'tour-btn-finish' : 'tour-btn-next');
+  nextBtn.onclick     = isLast ? skipTour : () => tourStep(1);
+  document.getElementById('tour-bar').innerHTML = Array.from({length: n}, (_, i) =>
+    `<div class="tour-dot ${i < TOUR_IDX ? 'done' : i === TOUR_IDX ? 'active' : ''}"></div>`
+  ).join('');
+  _tourShowHalo(step.target || null);
 }
 
 init();

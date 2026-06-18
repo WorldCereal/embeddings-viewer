@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>WorldCereal — Classify Embeddings</title>
+<title>WorldCereal: Classify Embeddings</title>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -166,7 +166,7 @@ input.cls-colorpick { width:26px; height:26px; border:none; border-radius:3px; c
 .ldel:hover { color:#c0392b; }
 .loprow { display:flex; align-items:center; gap:6px; margin-top:6px; }
 .loprow label { font-size:10px; color:#7a86a0; flex-shrink:0; }
-.loprow input[type=range] { flex:1; height:3px; accent-color:#3a7bd5; cursor:pointer; }
+.loprow input[type=range] { flex:1; height:6px; accent-color:#3a7bd5; cursor:pointer; border-radius:5px; }
 .loprow span { font-size:10px; color:#8892aa; width:28px; text-align:right; }
 .brow { display:flex; align-items:center; gap:5px; margin-top:7px; padding-top:7px; border-top:1px solid #222438; }
 .brow label { font-size:10px; color:#7a86a0; flex-shrink:0; }
@@ -196,7 +196,9 @@ input.cls-colorpick { width:26px; height:26px; border:none; border-radius:3px; c
 .stiname { flex:1; font-size:11px; }
 
 /* ── Sampling section ────────────────────────────────────── */
-.tile-sel-list { margin-bottom:8px; }
+.tile-sel-list { margin-bottom:8px; max-height:160px; overflow-y:auto; }
+.tile-sel-list::-webkit-scrollbar { width:4px; }
+.tile-sel-list::-webkit-scrollbar-thumb { background:#2d3155; border-radius:2px; }
 .tile-sel-item { display:flex; align-items:center; gap:7px; padding:4px 0; font-size:11px; }
 .tile-sel-item input[type=checkbox] { accent-color:#3a7bd5; }
 .tile-sel-lbl { flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -228,7 +230,7 @@ input.cls-colorpick { width:26px; height:26px; border:none; border-radius:3px; c
 .clf-status { font-size:12px; color:#a8d8d0; padding:4px 0 6px; min-height:22px; }
 .clf-opacity-row { display:flex; align-items:center; gap:7px; margin-bottom:8px; }
 .clf-opacity-row label { font-size:10px; color:#7a86a0; flex-shrink:0; }
-.clf-opacity-row input[type=range] { flex:1; height:3px; accent-color:#5ec882; }
+.clf-opacity-row input[type=range] { flex:1; height:6px; accent-color:#5ec882; border-radius:3px; }
 .clf-opacity-row span { font-size:10px; color:#8892aa; width:30px; text-align:right; }
 
 /* ── Subpanels ─────────────────────────────────────── */
@@ -265,7 +267,7 @@ input.cls-colorpick { width:26px; height:26px; border:none; border-radius:3px; c
 .export-res-note { font-size:9px; color:#5a6480; margin-top:3px; line-height:1.4; }
 
 /* ── PCA floating window ──────────────────────────────────── */
-#pca-win { position:fixed; top:64px; right:310px; z-index:3000; background:#181a2a; border:1px solid #252840; border-radius:8px; width:380px; box-shadow:0 8px 32px #000d; display:none; }
+#pca-win { position:fixed; top:64px; right:310px; z-index:3000; background:#181a2a; border:1px solid #252840; border-radius:8px; width:380px; min-width:280px; min-height:220px; box-shadow:0 8px 32px #000d; display:none; resize:both; overflow:hidden; }
 #pca-win-hd { padding:8px 12px; cursor:move; border-bottom:1px solid #1e2036; display:flex; align-items:center; justify-content:space-between; border-radius:8px 8px 0 0; }
 #pca-win-hd span { font-size:12px; font-weight:700; color:#a0b8e0; }
 #pca-win-hd button { background:none; border:none; color:#6a7490; cursor:pointer; font-size:15px; line-height:1; padding:0 2px; }
@@ -275,26 +277,140 @@ input.cls-colorpick { width:26px; height:26px; border:none; border-radius:3px; c
 .btn-pca:hover { background:#261e36; }
 .btn-pca:disabled { opacity:.4; cursor:not-allowed; }
 
-/* ── Custom COG form ─────────────────────────────────────── */
-.cog-form { display:flex; flex-direction:column; gap:5px; }
-.cog-form-row { display:flex; gap:5px; align-items:center; }
-.cog-url-inp { flex:1; background:#1e2136; border:1px solid #272b47; color:#d4d8e8; padding:5px 8px; border-radius:4px; font-size:11px; }
-.cog-url-inp:focus { outline:none; border-color:#3a7bd5; }
 
 /* ── Leaflet overrides ───────────────────────────────────── */
 .leaflet-control-zoom a { background:#181a2a !important; color:#7eb8f7 !important; border-color:#252840 !important; }
 .leaflet-control-layers { background:#181a2a !important; border-color:#252840 !important; }
+.s2-tile-label { background:transparent !important; border:none !important; box-shadow:none !important; font-size:10px; font-weight:700; color:#5a9be8; text-shadow:0 0 3px #000, 0 0 6px #000; }
+
+/* ── S2 Tile Grid section ─────────────────────────────────── */
+.s2-toggle-row { display:flex; align-items:center; justify-content:space-between; }
+.s2-toggle-row label { font-size:11px; color:#8892aa; display:flex; align-items:center; gap:5px; cursor:pointer; }
+#s2-status { font-size:10px; color:#4a5570; margin-top:3px; }
+.s2-heading {
+  font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.8px;
+  color:#7eb8f7; display:flex; align-items:center; gap:8px;
+}
+
+/* ── Scrollable layer list ───────────────────────────────── */
+#lemb { max-height:200px; overflow-y:auto; }
+#lemb::-webkit-scrollbar { width:4px; }
+#lemb::-webkit-scrollbar-thumb { background:#2d3155; border-radius:2px; }
+
+/* ── Tour text sizes ─────────────────────────────────────── */
+
+/* ── Example CSV buttons ─────────────────────────────────── */
+.btn-example-csv {
+  flex:1; font-size:10px; font-weight:600; padding:4px 6px; border-radius:3px;
+  background:#1a1e30; border:1px dashed #3a4060; color:#8898c8;
+  cursor:pointer; transition:all .15s; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.btn-example-csv:hover { background:#20263a; border-color:#5a7bd5; color:#a8b8f0; }
+.example-csv-row { display:flex; gap:4px; margin-top:4px; }
+
+/* ── Tile actions row ────────────────────────────────────── */
+.tile-actions-row { display:flex; gap:4px; margin-bottom:6px; flex-wrap:wrap; }
+.btn-tile-act {
+  flex:1; font-size:10px; font-weight:600; padding:4px 6px; border-radius:3px;
+  background:#1e2136; border:1px solid #2d3155; color:#7a86a0;
+  cursor:pointer; transition:all .15s; white-space:nowrap;
+}
+.btn-tile-act:hover { background:#252840; border-color:#3a7bd5; color:#7eb8f7; }
+.btn-tile-act.warn { border-color:#6b3a1a; color:#c87a3a; }
+.btn-tile-act.warn:hover { background:#2a1a0a; border-color:#c87a3a; }
+
+/* ── Tour modal ───────────────────────────────────────────── */
+#tour-overlay {
+  position:fixed; inset:0; z-index:9000; background:rgba(0,0,0,.25);
+  display:flex; align-items:center; justify-content:center;
+  transition:opacity .2s; pointer-events:none;
+}
+/* allow clicks on tour box even while overlay is pointer-events:none */
+#tour-box { pointer-events:all; }
+#tour-box {
+  background:#181a2a; border:1px solid #2d3565; border-radius:10px;
+  width:420px; max-width:calc(100vw - 32px); box-shadow:0 16px 60px #000c;
+  overflow:hidden; position:relative;
+}
+#tour-bar {
+  display:flex; gap:3px; padding:10px 14px 0;
+}
+.tour-dot {
+  flex:1; height:3px; border-radius:2px; background:#1e2346; transition:background .2s;
+}
+.tour-dot.active { background:#3a7bd5; }
+.tour-dot.done   { background:#2a5a9a; }
+#tour-body { padding:18px 20px 12px; }
+#tour-icon { font-size:32px; margin-bottom:10px; }
+#tour-title { font-size:17px; font-weight:700; color:#a8c8f8; margin-bottom:10px; }
+#tour-desc  { font-size:14px; color:#8898b8; line-height:1.7; }
+#tour-desc b { color:#c0d4f0; }
+#tour-desc code { background:#111422; padding:1px 5px; border-radius:3px; font-size:12px; color:#6ac; }
+/* Halo ring that highlights elements behind the overlay */
+#tour-halo {
+  position:fixed; z-index:9001; pointer-events:none; display:none;
+  border:2px solid #3a7bd5; border-radius:6px;
+  box-shadow: 0 0 0 4000px rgba(0,0,0,0.25), 0 0 0 4px rgba(58,123,213,0.3), 0 0 22px rgba(58,123,213,0.8);
+  animation: haloGlow 1.8s ease-in-out infinite;
+}
+@keyframes haloGlow {
+  0%,100% { box-shadow: 0 0 0 4000px rgba(0,0,0,0.25), 0 0 0 4px rgba(58,123,213,0.3), 0 0 22px rgba(58,123,213,0.8); }
+  50%      { box-shadow: 0 0 0 4000px rgba(0,0,0,0.25), 0 0 0 7px rgba(58,123,213,0.5), 0 0 36px rgba(58,123,213,1.0); }
+}
+#tour-foot {
+  display:flex; align-items:center; gap:6px;
+  padding:10px 16px 14px; border-top:1px solid #1e2036;
+}
+.tour-btn {
+  padding:6px 16px; border-radius:5px; font-size:12px; font-weight:600;
+  cursor:pointer; border:1px solid #2d3155; transition:all .15s;
+}
+.tour-btn-skip { background:none; color:#5a6480; margin-right:auto; border-color:transparent; }
+.tour-btn-skip:hover { color:#8892aa; }
+.tour-btn-prev { background:#1e2136; color:#7a86a0; }
+.tour-btn-prev:hover { background:#252840; color:#a0aac0; }
+.tour-btn-next { background:#1b2f50; color:#7eb8f7; border-color:#3a7bd5; }
+.tour-btn-next:hover { background:#1e3a62; }
+.tour-btn-finish { background:#1b3320; color:#4abf6a; border-color:#2d6b2d; }
+.tour-btn-finish:hover { background:#1f3a26; }
+#tour-step-ctr { font-size:11px; color:#4a5570; margin-right:auto; }
+/* "?" re-open button in header */
+#btn-tour-reopen {
+  font-size:11px; font-weight:700; padding:3px 9px; border-radius:4px;
+  border:1px solid #2d3a6a; color:#5a7ab0; background:#131828;
+  cursor:pointer; flex-shrink:0; transition:all .15s;
+}
+#btn-tour-reopen:hover { border-color:#3a7bd5; color:#7eb8f7; }
 </style>
 </head>
 <body>
 
+<!-- ═══ TOUR MODAL ═══════════════════════════════════════════ -->
+<div id="tour-halo"></div>
+<div id="tour-overlay" style="display:none;">
+  <div id="tour-box">
+    <div id="tour-bar"></div>
+    <div id="tour-body">
+      <div id="tour-icon"></div>
+      <div id="tour-title"></div>
+      <div id="tour-desc"></div>
+    </div>
+    <div id="tour-foot">
+      <button class="tour-btn tour-btn-skip" onclick="skipTour()">Skip Tour</button>
+      <span id="tour-step-ctr"></span>
+      <button class="tour-btn tour-btn-prev" id="tour-prev" onclick="tourStep(-1)">← Back</button>
+      <button class="tour-btn tour-btn-next" id="tour-next" onclick="tourStep(1)">Next →</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ PCA FLOATING WINDOW ══════════════════════════════════ -->
 <div id="pca-win">
   <div id="pca-win-hd">
-    <span>◈ PCA 3D — Training Points</span>
+    <span>◈ PCA 3D: Training Points</span>
     <button onclick="closePCAWindow()">✕</button>
   </div>
-  <canvas id="pca-canvas" style="display:block;width:100%;"></canvas>
+  <canvas id="pca-canvas" style="display:block;width:100%;flex:1;min-height:0;"></canvas>
   <div id="pca-legend"></div>
 </div>
 
@@ -307,9 +423,11 @@ input.cls-colorpick { width:26px; height:26px; border:none; border-radius:3px; c
   <span class="sub">Point sampling • Cosine similarity classifier • Viewport-adaptive</span>
   <nav class="hdr-nav">
     <a href="index.html" class="nav-pill">🗺 Viewer</a>
+    <a href="float.html" class="nav-pill">⚡ Float32</a>
     <span class="nav-pill active">🔬 Classify</span>
   </nav>
   <span id="hint-bar">Select a class then click the map to add training points</span>
+  <button id="btn-tour-reopen" onclick="showTour(true)" title="Open page tour">? Tour</button>
 </div>
 
 <!-- ═══ MAIN ══════════════════════════════════════════════════ -->
@@ -325,34 +443,29 @@ input.cls-colorpick { width:26px; height:26px; border:none; border-radius:3px; c
         <code>Access-Control-Allow-Headers: Range, Content-Type</code>
       </div>
 
+      <!-- ── S2 TILE GRID (top) ────────────────────────────── -->
+      <div class="sec" style="border:1px solid #1e3060;border-radius:6px;padding:8px 10px;background:#111422;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+          <span class="s2-heading">🗺 S2 Tile Grid</span>
+          <label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:11px;color:#8892aa;">
+            <input type="checkbox" id="s2-tiles-toggle" checked onchange="toggleS2TilesLayer(this.checked)" style="margin:0;">
+            Show
+          </label>
+        </div>
+        <div id="s2-status" style="font-size:10px;color:#4a5570;">Loading tile grid…</div>
+      </div>
+
       <!-- ── STEP 1 ──────────────────────────────────────── -->
       <div class="step-label">Step 1 · Load Embedding Tile(s)</div>
 
       <!-- STAC Catalog at top of step 1 -->
       <div class="sec">
-        <div class="sec-hd">STAC Catalog — presto-embeddings-uk</div>
+        <div class="sec-hd">STAC Catalog: presto-embeddings-uk</div>
         <div class="stacbar">
           <input class="stfil" id="stfil" type="text" placeholder="Filter…" oninput="filterSTAC()"/>
           <button class="bsm" id="stbtn" onclick="fetchSTAC()">Fetch</button>
         </div>
         <div class="stlist" id="stlist"><div class="empty">Click Fetch to load items</div></div>
-      </div>
-
-      <!-- Custom COG URL -->
-      <div class="sec">
-        <div class="sec-hd">Add Custom COG URL</div>
-        <div class="cog-form">
-          <input class="cog-url-inp" id="cog-url" type="text" placeholder="https://… (COG URL)"
-            onkeydown="if(event.key==='Enter') addCustomCOG()">
-          <div class="cog-form-row">
-            <label style="font-size:10px;color:#7a86a0;flex-shrink:0;">Type:</label>
-            <select id="cog-type" class="clf-tile-sel" style="flex:1">
-              <option value="embed">128-band embedding</option>
-              <option value="3band">3-band display</option>
-            </select>
-            <button class="bsm" onclick="addCustomCOG()">Add</button>
-          </div>
-        </div>
       </div>
 
       <!-- Embedding Layers below STAC -->
@@ -374,7 +487,7 @@ input.cls-colorpick { width:26px; height:26px; border:none; border-radius:3px; c
           <label>Tile:</label>
           <select class="clf-tile-sel" id="clf-tile-sel-spv"
             onchange="CLF.lastTileIdSpv=parseInt(this.value)||null;updateSamplingUI()">
-            <option value="">— select tile —</option>
+            <option value="">Select a tile</option>
           </select>
         </div>
         <div class="clf-tile-row">
@@ -414,7 +527,7 @@ input.cls-colorpick { width:26px; height:26px; border:none; border-radius:3px; c
           <label>Tile:</label>
           <select class="clf-tile-sel" id="clf-tile-sel-unspv"
             onchange="CLF.lastTileIdUnspv=parseInt(this.value)||null;updateSamplingUI()">
-            <option value="">— select tile —</option>
+            <option value="">Select a tile</option>
           </select>
         </div>
         <div class="clf-tile-row" style="align-items:center;">
@@ -484,6 +597,11 @@ input.cls-colorpick { width:26px; height:26px; border:none; border-radius:3px; c
           </div>
           <input type="file" id="csv-file-input" accept=".csv,.txt,.tsv" style="display:none" onchange="handleCSVFile(this)">
         </div>
+        <!-- Example datasets -->
+        <div class="example-csv-row">
+          <button class="btn-example-csv" onclick="loadExampleCSV('uk_viewer_csvs/uk_croptype_points.csv','Crop Types')" title="Load 1 429 example crop-type training points across the UK">🌾 Example Crop Type Points</button>
+          <button class="btn-example-csv" onclick="loadExampleCSV('uk_viewer_csvs/uk_landcover_points.csv','Land Cover')" title="Load 5 104 example land-cover training points across the UK">🌿 Example Land Cover Points</button>
+        </div>
       </div>
 
       <!-- Classes -->
@@ -535,8 +653,12 @@ input.cls-colorpick { width:26px; height:26px; border:none; border-radius:3px; c
 
       <!-- Sample Training Points -->
       <div class="sec">
-        <div style="font-size:10px;color:#7a86a0;margin-bottom:6px;">
+        <div style="font-size:10px;color:#7a86a0;margin-bottom:4px;">
           Select tiles to sample from (point must fall within tile extent):
+        </div>
+        <div class="tile-actions-row">
+          <button class="btn-tile-act" onclick="selectAllTiles()" title="Check all currently-loaded tiles">☑ Select All</button>
+          <button class="btn-tile-act warn" onclick="loadAllStacForSampling()" title="Load all STAC tiles as hidden background layers so their pixels can be sampled. Requires a network request for each tile">🌐 Load All STAC (hidden)</button>
         </div>
         <div class="tile-sel-list" id="tile-sel-list">
           <div class="empty">Load embedding tiles first</div>
@@ -1299,7 +1421,7 @@ function updateTileSelectors() {
 </div>`).join('');
   }
 
-  const opts='<option value="">— select tile —</option>'
+  const opts='<option value="">Select a tile</option>'
     +S.layers.filter(l=>l.status==='ok').map(l=>`<option value="${l.id}">${esc(l.name)}</option>`).join('');
 
   // Supervised selector
@@ -1332,7 +1454,7 @@ function updateSamplingUI() {
   } else if (totalPts===0) {
     document.getElementById('smpl-status').textContent='Add class points and load a tile to sample';
   } else {
-    document.getElementById('smpl-status').textContent=`${totalPts} point${totalPts!==1?'s':''} placed — click Run Sampling`;
+    document.getElementById('smpl-status').textContent=`${totalPts} point${totalPts!==1?'s':''} placed: click Run Sampling`;
   }
 
   // ── Supervised panel ──────────────────────────────────
@@ -1658,7 +1780,7 @@ async function _doClassification(layer) {
   const cMinX=Math.max(vMinX,cogMinX),cMaxX=Math.min(vMaxX,cogMaxX);
   const cMinY=Math.max(vMinY,cogMinY),cMaxY=Math.min(vMaxY,cogMaxY);
   if (cMinX>=cMaxX||cMinY>=cMaxY) {
-    document.getElementById('clf-status-spv').textContent='⚠ Tile not visible — pan or zoom to the tile.';
+    document.getElementById('clf-status-spv').textContent='⚠ Tile not visible: pan or zoom to the tile.';
     return;
   }
 
@@ -1743,7 +1865,7 @@ async function _doClassification(layer) {
   CLF.lastScaleSpv=nativeCols/outW;
   // Update resolution note
   const noteEl=document.getElementById('export-note-spv');
-  if(noteEl) noteEl.textContent=`${outW}×${outH}px from ${nativeCols}×${nativeRows} native pixels${nativeCols/outW>1.4?' — zoom in for more detail':''}`;
+  if(noteEl) noteEl.textContent=`${outW}×${outH}px from ${nativeCols}×${nativeRows} native pixels${nativeCols/outW>1.4?': zoom in for more detail':''}`;
 
 
   const url=canvas.toDataURL('image/png');
@@ -1800,7 +1922,7 @@ async function _doKmeans(layer) {
   const cMinX=Math.max(vMinX,cogMinX), cMaxX=Math.min(vMaxX,cogMaxX);
   const cMinY=Math.max(vMinY,cogMinY), cMaxY=Math.min(vMaxY,cogMaxY);
   if (cMinX>=cMaxX||cMinY>=cMaxY) {
-    document.getElementById('clf-status-unspv').textContent='⚠ Tile not visible — pan/zoom to the tile.';
+    document.getElementById('clf-status-unspv').textContent='⚠ Tile not visible: pan/zoom to the tile.';
     return;
   }
 
@@ -1963,7 +2085,7 @@ async function _doKmeans(layer) {
   CLF.lastCentListUnspv=kCents;
   CLF.lastScaleUnspv=nativeCols/outW;
   const noteElU=document.getElementById('export-note-unspv');
-  if(noteElU) noteElU.textContent=`${outW}×${outH}px from ${nativeCols}×${nativeRows} native pixels${nativeCols/outW>1.4?' — zoom in for more detail':''}`;
+  if(noteElU) noteElU.textContent=`${outW}×${outH}px from ${nativeCols}×${nativeRows} native pixels${nativeCols/outW>1.4?': zoom in for more detail':''}`;
 
 
   const url=canvas.toDataURL('image/png');
@@ -2309,7 +2431,7 @@ function parseAndImportCSV(text) {
   updateKDefault();
   renderClassList();
   updateSamplingUI();
-  alert(`Imported ${added} point${added!==1?'s':''}.${skipped?` (${skipped} skipped — invalid rows)`:''}`);
+  alert(`Imported ${added} point${added!==1?'s':''}.${skipped?` (${skipped} skipped: invalid rows)`:''}`);
 }
 
 function updateKDefault() {
@@ -2447,7 +2569,7 @@ function _parseSampledCSV(text) {
   computeCentroids();
   renderClassList();
   updateSamplingUI();
-  alert(`Imported ${added} sampled point${added!==1?'s':''} with embeddings.${skipped?` (${skipped} skipped — invalid rows)`:''}`);
+  alert(`Imported ${added} sampled point${added!==1?'s':''} with embeddings.${skipped?` (${skipped} skipped: invalid rows)`:''}`);
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -2688,13 +2810,292 @@ function initRightPanelResize() {
 // ═══════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════
+// S2 TILE GRID (GeoJSON)
+// ═══════════════════════════════════════════════════════════
+const S2 = { layer: null, visible: true };
+
+async function loadS2TilesGeoJSON() {
+  const statusEl = document.getElementById('s2-status');
+  try {
+    const res = await fetch('uk_viewer_csvs/uk_grid_s2tiles.geojson');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const geojson = await res.json();
+
+    S2.layer = L.geoJSON(geojson, {
+      style: {
+        color: '#4a8fd5', weight: 1.5, opacity: 0.7,
+        fill: false, interactive: true,
+      },
+      onEachFeature: (feat, layer) => {
+        const label = feat.properties?.s2_tile || '';
+        layer.bindTooltip(label, {
+          permanent: true, direction: 'center', className: 's2-tile-label',
+          opacity: 0.85,
+        });
+        layer.bindPopup(`<b>S2 Tile:</b> ${label}`);
+      },
+    }).addTo(S.map);
+
+    const n = geojson.features?.length || 0;
+    statusEl.textContent = `${n} tile polygons loaded`;
+    statusEl.style.color = '#4a6';
+  } catch(e) {
+    statusEl.textContent = `Failed to load: ${e.message}`;
+    statusEl.style.color = '#c0392b';
+    document.getElementById('s2-tiles-toggle').disabled = true;
+  }
+}
+
+function toggleS2TilesLayer(show) {
+  S2.visible = show;
+  if (!S2.layer) return;
+  if (show) S2.layer.addTo(S.map);
+  else S.map.removeLayer(S2.layer);
+}
+
+// ═══════════════════════════════════════════════════════════
+// EXAMPLE CSV LOADER
+// ═══════════════════════════════════════════════════════════
+async function loadExampleCSV(path, label) {
+  try {
+    const res = await fetch(path);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    parseAndImportCSV(text);
+  } catch(e) {
+    alert(`Could not load ${label} CSV: ${e.message}`);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+// TILE SELECTION HELPERS
+// ═══════════════════════════════════════════════════════════
+function selectAllTiles() {
+  document.querySelectorAll('#tile-sel-list input[type=checkbox]').forEach(cb => cb.checked = true);
+}
+
+async function loadAllStacForSampling() {
+  if (!S.stacRaw.length) {
+    alert('Please fetch the STAC catalog first (Step 1 → click Fetch).'); return;
+  }
+  const unloaded = S.stacRaw.filter(item => !S.layers.some(l => l.stacId === item.id));
+  if (!unloaded.length) {
+    selectAllTiles();
+    document.getElementById('smpl-status').textContent = 'All tiles already loaded: all selected.';
+    return;
+  }
+  const ok = confirm(
+    `Load ${unloaded.length} STAC tile(s) as hidden background layers for sampling?\n\n` +
+    `They will NOT appear on the map but will be available in the tile selector.\n` +
+    `Each requires a network request and COG header read, expect ~${unloaded.length * 3}–${unloaded.length * 8} seconds.\n\n` +
+    `Tip: After sampling completes you can run classification tile-by-tile on just the tiles you need.`
+  );
+  if (!ok) return;
+
+  const statusEl = document.getElementById('smpl-status');
+  let loaded = 0, failed = 0;
+
+  for (const item of unloaded) {
+    statusEl.textContent = `Loading tile ${loaded + failed + 1}/${unloaded.length}: ${item.id}…`;
+    try {
+      await _loadSTACItemHidden(item.id);
+      loaded++;
+    } catch(e) {
+      console.warn(`loadAllStacForSampling: ${item.id} failed:`, e.message);
+      failed++;
+    }
+  }
+  statusEl.textContent = `${loaded} tile(s) loaded${failed ? `, ${failed} failed` : ''}. Selecting all…`;
+  selectAllTiles();
+}
+
+async function _loadSTACItemHidden(itemId) {
+  const res = await fetch(`${CFG.STAC_BASE}/collections/${CFG.STAC_COL}/items/${encodeURIComponent(itemId)}`);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const item = await res.json();
+  const assets = item.assets || {};
+  const keys = Object.keys(assets);
+  const key = keys.find(k => k==='data'||k==='embeddings'||k==='cog')
+           || keys.find(k => (assets[k].type||'').includes('tiff'))
+           || keys[0];
+  if (!key) throw new Error('No COG asset found');
+  const href = assets[key].href;
+  const url = href.startsWith('http') ? href
+    : new URL(href, `${CFG.STAC_BASE}/collections/${CFG.STAC_COL}/items/${itemId}`).href;
+  const layer = mkLayer(itemId, url);
+  layer.stacId = itemId;
+  layer.visible = false;   // hidden — no map display
+  layer.autoZoom = false;
+  S.layers.push(layer);
+  renderLists(); renderSTAC();
+  await loadCOG(layer.id);
+}
+
+// ═══════════════════════════════════════════════════════════
+// PAGE TOUR
+// ═══════════════════════════════════════════════════════════
+// PAGE TOUR
+// ═══════════════════════════════════════════════════════════
+const TOUR_STEPS = [
+  {
+    icon: '🛰',
+    title: 'Welcome to the WorldCereal Classify Page',
+    target: null,
+    desc: `This tool lets you <b>train land-cover classifiers in the browser</b> using WorldCereal 128-band embedding tiles.<br><br>
+The workflow has three steps, each labelled in the panels:<br>
+<b>Step 1</b> · Load embedding tile(s) from the STAC catalog (left sidebar)<br>
+<b>Step 2</b> · Place training points and sample their embedding vectors (right panel)<br>
+<b>Step 3</b> · Run supervised or K-means classification over the viewport (left sidebar)`,
+  },
+  {
+    icon: '🗺',
+    title: 'S2 Tile Grid',
+    target: '.s2-heading',
+    desc: `The <b>S2 Tile Grid</b> at the top of the left sidebar shows outlines of all available S2 tiles as blue polygons on the map.<br><br>
+Hover over a polygon to see its tile ID (e.g. <code>30UXD</code>). Use the <b>Show</b> checkbox to toggle the outlines on or off.<br><br>
+Knowing which tile covers your area of interest helps you choose which tile to load in Step 1.`,
+  },
+  {
+    icon: '📦',
+    title: 'Step 1: Load Embedding Tiles',
+    target: '#stlist',
+    desc: `Use the <b>STAC Catalog</b> section in the left sidebar to load tiles.<br><br>
+Click <b>Fetch</b> to list all available UK tiles, then click a tile ID to load it as a 128-band COG overlay on the map.<br><br>
+Use <b>Select All</b> to check all loaded tiles, or <b>Load All STAC (hidden)</b> to silently load every tile as a background layer so any point location can be sampled. Loaded tiles appear in the <b>Embedding Layers</b> list.`,
+  },
+  {
+    icon: '📍',
+    title: 'Step 2A: Add Class Samples',
+    target: '#cls-list',
+    desc: `Use the <b>right panel</b> to define classes and place training points on the map.<br><br>
+Click <b>+ Add</b> to create a class with a name and colour. Select it, then click <b>+ Add Points</b> and click anywhere on the map. Right-click a point to remove it.<br><br>
+Use <b>Import CSV</b> to load a saved point file (columns: <code>class_name, latitude, longitude, color</code>), or try the <b>Example Crop Type</b> and <b>Example Land Cover</b> buttons for ready-made training sets.`,
+  },
+  {
+    icon: '⚡',
+    title: 'Step 2B: Sample Training Points',
+    target: '#btn-sample',
+    desc: `Once you have placed points and loaded tiles, extract the embedding vectors.<br><br>
+Select which tiles to sample from using the checkboxes. Click <b>Run Sampling</b> to read each point's 128-dim vector from the COG file.<br><br>
+After sampling, the <b>Visualize Points PCA</b> button activates. Click it to see an interactive 3D scatter plot of the embeddings coloured by class. Drag to rotate, scroll to zoom.`,
+  },
+  {
+    icon: '🔬',
+    title: 'Step 3: Classify Viewport',
+    target: '#btn-classify',
+    desc: `Classify every pixel visible in the current map view.<br><br>
+<b>Supervised (left subpanel)</b>: uses your class centroids. Choose a tile and algorithm (Cosine, Euclidean, or Gaussian), then click <b>Run Classifier</b>.<br><br>
+<b>Unsupervised (right subpanel)</b>: K-means clustering with no labels. Set the number of clusters K and click <b>Run K-means</b>.<br><br>
+Export results as PNG + Legend, GeoTIFF (QGIS-ready with ColorMap), or Embedding PNG.`,
+  },
+  {
+    icon: '💾',
+    title: 'Save and Re-use Your Work',
+    target: '#btn-export-sampled-csv2',
+    desc: `All your work can be saved and reloaded:<br><br>
+<b>Export CSV</b> (Step 2A) saves class names, colours, and point coordinates.<br>
+<b>Export Sampled CSV</b> (Step 2B) also saves the 128-band embedding vectors: re-import this next time to skip sampling entirely.<br>
+<b>Import Sampled CSV</b> restores classes, map markers, and vectors in one step so you can classify immediately.<br><br>
+Add new points later and use <b>Sample new points only</b> to top up the dataset without re-sampling everything.`,
+  },
+];
+
+let TOUR_IDX = 0;
+
+// ── Halo spotlight ────────────────────────────────────────
+function _tourShowHalo(selector) {
+  const halo = document.getElementById('tour-halo');
+  const box  = document.getElementById('tour-box');
+  const ov   = document.getElementById('tour-overlay');
+  if (!selector) {
+    halo.style.display = 'none';
+    box.style.position = '';
+    box.style.left = box.style.top = box.style.right = box.style.bottom = '';
+    ov.style.alignItems = 'center';
+    ov.style.justifyContent = 'center';
+    ov.style.background = 'rgba(0,0,0,.25)';
+    return;
+  }
+  const el = document.querySelector(selector);
+  if (!el) { _tourShowHalo(null); return; }
+  const r = el.getBoundingClientRect();
+  halo.style.display = 'block';
+  halo.style.left   = (r.left   - 5) + 'px';
+  halo.style.top    = (r.top    - 5) + 'px';
+  halo.style.width  = (r.width  + 10) + 'px';
+  halo.style.height = (r.height + 10) + 'px';
+  // Overlay is transparent — halo box-shadow provides the dimming
+  ov.style.background = 'transparent';
+  // Position tour box away from the highlighted element
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const bw = Math.min(440, vw - 24), bh = 400;
+  let left, top;
+  ov.style.alignItems = 'flex-start';
+  ov.style.justifyContent = 'flex-start';
+  if (r.right + bw + 24 <= vw) {
+    left = r.right + 16; top = Math.max(8, Math.min(vh - bh - 8, r.top + r.height / 2 - bh / 2));
+  } else if (r.left - bw - 24 >= 0) {
+    left = r.left - bw - 16; top = Math.max(8, Math.min(vh - bh - 8, r.top + r.height / 2 - bh / 2));
+  } else if (r.bottom + bh + 16 <= vh) {
+    left = Math.max(8, Math.min(vw - bw - 8, r.left + r.width / 2 - bw / 2)); top = r.bottom + 16;
+  } else {
+    left = Math.max(8, Math.min(vw - bw - 8, r.left + r.width / 2 - bw / 2)); top = Math.max(8, r.top - bh - 16);
+  }
+  box.style.position = 'fixed';
+  box.style.left = left + 'px';
+  box.style.top  = top + 'px';
+}
+
+function showTour(forceShow) {
+  const seen = localStorage.getItem('wc_classify_tour_seen');
+  if (seen && !forceShow) return;
+  TOUR_IDX = 0;
+  renderTourStep();
+  document.getElementById('tour-overlay').style.display = 'flex';
+}
+
+function skipTour() {
+  document.getElementById('tour-overlay').style.display = 'none';
+  document.getElementById('tour-halo').style.display = 'none';
+  localStorage.setItem('wc_classify_tour_seen', '1');
+}
+
+function tourStep(dir) {
+  TOUR_IDX = Math.max(0, Math.min(TOUR_STEPS.length - 1, TOUR_IDX + dir));
+  renderTourStep();
+}
+
+function renderTourStep() {
+  const step = TOUR_STEPS[TOUR_IDX];
+  const n = TOUR_STEPS.length;
+  document.getElementById('tour-icon').textContent  = step.icon;
+  document.getElementById('tour-title').textContent = step.title;
+  document.getElementById('tour-desc').innerHTML    = step.desc;
+  document.getElementById('tour-step-ctr').textContent = `${TOUR_IDX + 1} / ${n}`;
+  document.getElementById('tour-prev').style.visibility = TOUR_IDX === 0 ? 'hidden' : 'visible';
+  const nextBtn = document.getElementById('tour-next');
+  const isLast  = TOUR_IDX === n - 1;
+  nextBtn.textContent = isLast ? '✓ Get Started' : 'Next →';
+  nextBtn.className   = 'tour-btn ' + (isLast ? 'tour-btn-finish' : 'tour-btn-next');
+  nextBtn.onclick     = isLast ? skipTour : () => tourStep(1);
+  document.getElementById('tour-bar').innerHTML = Array.from({length: n}, (_, i) =>
+    `<div class="tour-dot ${i < TOUR_IDX ? 'done' : i === TOUR_IDX ? 'active' : ''}"></div>`
+  ).join('');
+  _tourShowHalo(step.target || null);
+}
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
 function init() {
   initMap();
   initSidebarResize();
   initRightPanelResize();
   document.getElementById('new-cls-color').value=CLASS_PALETTE[0];
-  // Auto-populate STAC list on load
   fetchSTAC();
+  loadS2TilesGeoJSON();
+  showTour();   // shows only on first visit (localStorage gate)
 }
 
 init();
