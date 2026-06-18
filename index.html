@@ -2367,7 +2367,7 @@ async function loadS2TilesGeoJSON() {
       onEachFeature: (feat, layer) => {
         const label = feat.properties?.s2_tile || '';
         layer.bindTooltip(label, {
-          permanent:true, direction:'center', className:'s2-tile-label', opacity:0.85,
+          permanent:true, direction:'center', className:'Name', opacity:0.85,
         });
         layer.bindPopup(`<b>S2 Tile:</b> ${label}`);
       },
