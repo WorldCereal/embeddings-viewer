@@ -452,7 +452,7 @@ input.sp-colorpick { width: 28px; height: 22px; border: none; border-radius: 3px
   <a href="https://worldcereal.github.io" target="_blank" class="wc-logo-link" title="WorldCereal Project">
     <img src="worldcereal_logo.jpg" alt="WorldCereal" class="wc-logo" onerror="this.style.display='none'">
   </a>
-  <h1>🛰 WorldCereal COG Viewer</h1>
+  <h1>🛰 WorldCereal Embeddings Explorer</h1>
   <span class="sub">Multi-layer • Viewport-adaptive • 1–99% stretch</span>
   <nav class="hdr-nav">
     <span class="nav-pill active">🗺 Viewer</span>
@@ -505,7 +505,7 @@ input.sp-colorpick { width: 28px; height: 22px; border: none; border-radius: 3px
       </div>
 
       <div class="sec">
-        <div class="sec-title">STAC Catalog: presto-embeddings-uk</div>
+        <div class="sec-title">STAC Catalog: embeddings-uk</div>
         <div class="stacbar">
           <input class="stfil" id="stfil" type="text" placeholder="Filter…" oninput="filterSTAC()"/>
           <button class="bsm" id="stbtn" onclick="fetchSTAC()">Fetch</button>
@@ -2394,9 +2394,9 @@ function toggleS2TilesLayer(show) {
 const TOUR_STEPS = [
   {
     icon: '🛰',
-    title: 'Welcome to the WorldCereal COG Viewer',
+    title: 'Welcome to the WorldCereal Embeddings Explorer',
     target: null,
-    desc: `Explore and compare <b>128-band embedding tiles</b> produced by the WorldCereal Presto model over the UK.<br><br>
+    desc: `Explore and compare <b>128-band embedding tiles</b> produced by the WorldCereal model over the UK.<br><br>
 Pan and zoom the map to navigate. Layers render adaptively at the current viewport resolution. No need to load the full file.`,
   },
   {
