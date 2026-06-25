@@ -460,7 +460,7 @@ input.cls-colorpick { width:26px; height:26px; border:none; border-radius:3px; c
 
       <!-- STAC Catalog at top of step 1 -->
       <div class="sec">
-        <div class="sec-hd">STAC Catalog: embeddings-uk</div>
+        <div class="sec-hd">STAC Catalog: embeddings</div>
         <div class="stacbar">
           <input class="stfil" id="stfil" type="text" placeholder="Filter…" oninput="filterSTAC()"/>
           <button class="bsm" id="stbtn" onclick="fetchSTAC()">Fetch</button>
@@ -716,7 +716,14 @@ const CFG = {
     32632:'+proj=utm +zone=32 +datum=WGS84 +units=m +no_defs',
     32633:'+proj=utm +zone=33 +datum=WGS84 +units=m +no_defs',
     32634:'+proj=utm +zone=34 +datum=WGS84 +units=m +no_defs',
-  }
+    32636:'+proj=utm +zone=36 +datum=WGS84 +units=m +no_defs',
+  },
+  EXTRA_TILES: [
+    {
+      id: '36NXF_0_1 · Bungoma',
+      cogUrl: 'https://s3.waw4-1.cloudferro.com/worldcereal-uk-waw4-1-o2q1qptnzbki8vavzriorqk0498vwc6tqvxlzvnw5/worldcereal_bonguma_embeddings_raw/Bonguma_croptype_embeddings_36NXF_0_1_2023-09-19_2024-09-10.tif',
+    },
+  ]
 };
 
 // Default color palette for new classes
@@ -1211,6 +1218,12 @@ async function fetchSTAC() {
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
     const data=await res.json();
     S.stacRaw=data.features||data.items||[];
+    // Append extra (non-STAC) tiles as synthetic items
+    (CFG.EXTRA_TILES||[]).forEach(t=>{
+      if (!S.stacRaw.find(i=>i.id===t.id)) {
+        S.stacRaw.push({id:t.id, assets:{data:{href:t.cogUrl,type:'image/tiff; application=geotiff'}}, _extra:true});
+      }
+    });
     S.stacItems=[...S.stacRaw];
     renderSTAC();
   } catch(e) {
@@ -1235,6 +1248,16 @@ function renderSTAC() {
   }).join('');
 }
 async function loadSTACItem(itemId) {
+  // Short-circuit for extra (non-STAC) tiles
+  const extra=(CFG.EXTRA_TILES||[]).find(t=>t.id===itemId);
+  if (extra) {
+    const layer=mkLayer(itemId,extra.cogUrl);
+    layer.stacId=itemId;
+    S.layers.push(layer);
+    renderLists(); renderSTAC(); updateTileSelectors();
+    await loadCOG(layer.id);
+    return;
+  }
   try {
     const res=await fetch(`${CFG.STAC_BASE}/collections/${CFG.STAC_COL}/items/${encodeURIComponent(itemId)}`);
     if(!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -2961,7 +2984,7 @@ Knowing which tile covers your area of interest helps you choose which tile to l
     title: 'Step 1: Load Embedding Tiles',
     target: '#stlist',
     desc: `Use the <b>STAC Catalog</b> section in the left sidebar to load tiles.<br><br>
-Click <b>Fetch</b> to list all available UK tiles, then click a tile ID to load it as a 128-band COG overlay on the map.<br><br>
+Click <b>Fetch</b> to list all available tiles, then click a tile ID to load it as a 128-band COG overlay on the map.<br><br>
 Use <b>Select All</b> to check all loaded tiles, or <b>Load All STAC (hidden)</b> to silently load every tile as a background layer so any point location can be sampled. Loaded tiles appear in the <b>Embedding Layers</b> list.`,
   },
   {

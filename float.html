@@ -259,7 +259,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
       <div class="sec">
         <div class="step-label">Step 1 · Select Tile</div>
         <div class="sec-title">
-          STAC Catalog: embeddings-uk
+          STAC Catalog: embeddings
           <span class="sbadge bok" id="stac-badge">—</span>
         </div>
         <div class="stacbar">
@@ -426,7 +426,17 @@ const CFG = {
     32632:'+proj=utm +zone=32 +datum=WGS84 +units=m +no_defs',
     32633:'+proj=utm +zone=33 +datum=WGS84 +units=m +no_defs',
     32634:'+proj=utm +zone=34 +datum=WGS84 +units=m +no_defs',
-  }
+    32636:'+proj=utm +zone=36 +datum=WGS84 +units=m +no_defs',
+  },
+  // Extra tiles outside the main STAC collection (injected as synthetic items)
+  EXTRA_TILES: [
+    {
+      id: '36NXF_0_1',
+      label: '36NXF_0_1 · Bungoma County (Kenya)',
+      cogUrl: 'https://s3.waw4-1.cloudferro.com/worldcereal-uk-waw4-1-o2q1qptnzbki8vavzriorqk0498vwc6tqvxlzvnw5/worldcereal_bonguma_embeddings_raw/Bonguma_croptype_embeddings_36NXF_0_1_2023-09-19_2024-09-10.tif',
+      scaleUrl: 'https://s3.waw4-1.cloudferro.com/worldcereal-uk-waw4-1-o2q1qptnzbki8vavzriorqk0498vwc6tqvxlzvnw5/worldcereal_bonguma_scales_raw/Bonguma_croptype_embeddings_scale_36NXF_0_1_2023-09-19_2024-09-10.tif',
+    },
+  ],
 };
 
 Object.entries(CFG.PROJ).forEach(([c,d]) => proj4.defs(`EPSG:${c}`,d));
@@ -1083,7 +1093,7 @@ function reloadBands(which) {
 // ═══════════════════════════════════════════════════════════
 // TILE LOADING (from STAC)
 // ═══════════════════════════════════════════════════════════
-async function loadTile(tileId, cogUrl) {
+async function loadTile(tileId, cogUrl, customScaleUrl=null) {
   // Clear existing layers
   ['u8','sc','f32'].forEach(which => {
     const layer=F[which];
@@ -1104,8 +1114,8 @@ async function loadTile(tileId, cogUrl) {
   document.getElementById('u8-name').textContent=`${tileId} uint8 — loading…`;
   document.getElementById('sc-name').textContent=`${tileId} scales — loading…`;
 
-  // Build scale URL
-  const scaleUrl=`${CFG.S3}/${CFG.BUCKET}/${CFG.SCALE_POSTPROC}/${tileId}_scales.tif`;
+  // Build scale URL (use custom URL if provided, e.g. for extra tiles outside the UK bucket)
+  const scaleUrl=customScaleUrl||`${CFG.S3}/${CFG.BUCKET}/${CFG.SCALE_POSTPROC}/${tileId}_scales.tif`;
 
   // Create layer state objects
   F.u8 = mkLayerState('u8');
@@ -1317,6 +1327,12 @@ async function fetchSTAC() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data=await res.json();
     F.stacRaw=data.features||[];
+    // Append extra (non-STAC) tiles as synthetic items
+    (CFG.EXTRA_TILES||[]).forEach(t=>{
+      if (!F.stacRaw.find(i=>i.id===t.id)) {
+        F.stacRaw.push({id:t.id,_label:t.label,assets:{map:{href:t.cogUrl}},_scaleUrl:t.scaleUrl,_extra:true});
+      }
+    });
     F.stacItems=[...F.stacRaw];
     document.getElementById('stac-badge').textContent=`${F.stacRaw.length} tiles`;
     renderSTAC();
@@ -1338,15 +1354,17 @@ function renderSTAC() {
   el.innerHTML=F.stacItems.map(item=>{
     const tileId=item.id.replace(/_embeddings$/i,'');
     const loaded=F.tileId===tileId;
-    return `<div class="sti ${loaded?'loaded':''}" onclick="selectSTACItem('${esc(item.id)}','${esc(item.assets?.map?.href||'')}')">
-      <span class="stiname">${esc(tileId)}</span>
+    const label=item._label||tileId;
+    const scaleArg=item._scaleUrl||'';
+    return `<div class="sti ${loaded?'loaded':''}" onclick="selectSTACItem('${esc(item.id)}','${esc(item.assets?.map?.href||'')}','${esc(scaleArg)}')">
+      <span class="stiname">${esc(label)}</span>
       ${loaded?'<span style="color:#30e0cc;font-size:11px;font-weight:700">✓</span>'
               :'<span style="color:#30e0cc;font-size:17px;line-height:1">+</span>'}
     </div>`;
   }).join('');
 }
 
-async function selectSTACItem(itemId, hrefFromList) {
+async function selectSTACItem(itemId, hrefFromList, scaleUrl='') {
   let cogUrl=hrefFromList;
   if (!cogUrl) {
     try {
@@ -1365,7 +1383,7 @@ async function selectSTACItem(itemId, hrefFromList) {
     cogUrl=new URL(cogUrl,`${CFG.STAC_BASE}/collections/${CFG.STAC_COL}/items/${itemId}`).href;
   }
   const tileId=itemId.replace(/_embeddings$/i,'');
-  await loadTile(tileId, cogUrl);
+  await loadTile(tileId, cogUrl, scaleUrl||null);
 }
 
 // ═══════════════════════════════════════════════════════════

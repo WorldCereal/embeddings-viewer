@@ -505,7 +505,7 @@ input.sp-colorpick { width: 28px; height: 22px; border: none; border-radius: 3px
       </div>
 
       <div class="sec">
-        <div class="sec-title">STAC Catalog: embeddings-uk</div>
+        <div class="sec-title">STAC Catalog: embeddings</div>
         <div class="stacbar">
           <input class="stfil" id="stfil" type="text" placeholder="Filter…" oninput="filterSTAC()"/>
           <button class="bsm" id="stbtn" onclick="fetchSTAC()">Fetch</button>
@@ -639,7 +639,14 @@ const CFG = {
     32632:'+proj=utm +zone=32 +datum=WGS84 +units=m +no_defs',
     32633:'+proj=utm +zone=33 +datum=WGS84 +units=m +no_defs',
     32634:'+proj=utm +zone=34 +datum=WGS84 +units=m +no_defs',
-  }
+    32636:'+proj=utm +zone=36 +datum=WGS84 +units=m +no_defs',
+  },
+  EXTRA_TILES: [
+    {
+      id: '36NXF_0_1 · Bungoma',
+      cogUrl: 'https://s3.waw4-1.cloudferro.com/worldcereal-uk-waw4-1-o2q1qptnzbki8vavzriorqk0498vwc6tqvxlzvnw5/worldcereal_bonguma_embeddings_raw/Bonguma_croptype_embeddings_36NXF_0_1_2023-09-19_2024-09-10.tif',
+    },
+  ],
 };
 
 // Build pre-load URLs
@@ -1348,6 +1355,12 @@ async function fetchSTAC() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     S.stacRaw = data.features || data.items || [];
+    // Append extra (non-STAC) tiles as synthetic items
+    (CFG.EXTRA_TILES||[]).forEach(t=>{
+      if (!S.stacRaw.find(i=>i.id===t.id)) {
+        S.stacRaw.push({id:t.id, assets:{data:{href:t.cogUrl,type:'image/tiff; application=geotiff'}}, _extra:true});
+      }
+    });
     S.stacItems = [...S.stacRaw];
     renderSTAC();
   } catch(e) {
@@ -1375,6 +1388,16 @@ function renderSTAC() {
 }
 
 async function loadSTACItem(itemId) {
+  // Short-circuit for extra (non-STAC) tiles
+  const extra = (CFG.EXTRA_TILES||[]).find(t=>t.id===itemId);
+  if (extra) {
+    const layer = mkLayer(itemId, extra.cogUrl, 'embed');
+    layer.stacId = itemId;
+    S.layers.push(layer);
+    renderLists(); renderSTAC();
+    await loadCOG(layer.id);
+    return;
+  }
   try {
     const res = await fetch(`${CFG.STAC_BASE}/collections/${CFG.STAC_COL}/items/${encodeURIComponent(itemId)}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -2396,7 +2419,7 @@ const TOUR_STEPS = [
     icon: '🛰',
     title: 'Welcome to the WorldCereal Embeddings Explorer',
     target: null,
-    desc: `Explore and compare <b>128-band embedding tiles</b> produced by the WorldCereal model over the UK.<br><br>
+    desc: `Explore and compare <b>128-band embedding tiles</b> produced by the WorldCereal model.<br><br>
 Pan and zoom the map to navigate. Layers render adaptively at the current viewport resolution. No need to load the full file.`,
   },
   {
@@ -2412,7 +2435,7 @@ Use the <b>Show</b> toggle to hide or reveal the outlines. Click a polygon to se
     target: '#ld',
     desc: `<b>Display Layers</b> shows pre-loaded RGB composites and PCA visualisations.<br>
 <b>Embedding Layers (128-band)</b> lists full embedding COGs for exploration and classification.<br>
-<b>STAC Catalog</b> lets you browse all available UK tiles and click to load any of them.<br>
+<b>STAC Catalog</b> lets you browse all available tiles and click to load any of them.<br>
 <b>Add Custom COG URL</b> accepts any Cloud-Optimised GeoTIFF URL to add your own layers.`,
   },
   {
